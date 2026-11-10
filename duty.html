@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duty Allotment Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mut:#64748b;--pri:#2563eb;--pri2:#7c3aed;--bd:#e2e8f0;--inp:#f8fafc;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--sh:0 4px 18px rgba(15,23,42,.07)}
+[data-theme=dark]{--bg:#0b1020;--card:#151b2f;--tx:#e5e7eb;--mut:#94a3b8;--bd:#263154;--inp:#0f1426;--sh:0 4px 18px rgba(0,0,0,.4)}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);transition:background .3s}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 18px;background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;box-shadow:var(--sh)}
+header h1{font-size:17px;margin:0;flex:1;line-height:1.2}
+header small{display:block;font-weight:400;opacity:.85;font-size:12px}
+.ib{border:0;background:#ffffff26;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-size:14px;transition:.2s}
+.ib:hover{background:#ffffff48;transform:translateY(-1px)}
+.wrap{max-width:1180px;margin:auto;padding:16px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none}
+.tab{flex:none;padding:10px 18px;border-radius:999px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer;font-weight:600;font-size:14px;transition:.25s}
+.tab:hover{transform:translateY(-2px)}
+.tab.on{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;border-color:transparent}
+.pane{display:none;animation:in .45s ease}.pane.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
+.card h3{margin:0 0 12px;font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end}
+label{font-size:12px;font-weight:600;color:var(--mut);display:block;margin-bottom:4px}
+input,select{width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;background:var(--inp);color:var(--tx);font-size:14px;outline:0;transition:.2s}
+input:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.btn{padding:10px 16px;border:0;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;color:#fff;background:var(--pri);transition:.2s;white-space:nowrap}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(37,99,235,.3)}
+.btn.g{background:var(--ok)}.btn.r{background:var(--bad)}.btn.o{background:var(--warn)}.btn.s{background:var(--mut)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tw{overflow-x:auto;border:1px solid var(--bd);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;text-align:left;padding:10px;white-space:nowrap;position:sticky;top:0}
+td{padding:9px 10px;border-top:1px solid var(--bd)}
+tbody tr{transition:.15s}tbody tr:hover{background:rgba(37,99,235,.07)}
+.badge{padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:rgba(37,99,235,.14);color:var(--pri)}
+.badge.AN{background:rgba(217,119,6,.15);color:var(--warn)}.badge.Full{background:rgba(22,163,74,.15);color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;box-shadow:var(--sh);animation:in .5s}
+.stat b{font-size:26px;display:block;color:var(--pri)}.stat span{font-size:12px;color:var(--mut)}
+.conf{border-left:4px solid var(--bad);background:rgba(220,38,38,.07);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;line-height:1.5}
+.inv{border-left-color:var(--warn);background:rgba(217,119,6,.08)}
+.hint{font-size:12px;color:var(--mut);margin-top:6px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,100px);background:#111827;color:#fff;padding:12px 20px;border-radius:12px;z-index:99;transition:.35s;max-width:90%;font-size:14px}
+#toast.show{transform:translate(-50%,0)}
+#load{position:fixed;inset:0;background:#0006;display:none;place-items:center;z-index:98}
+#load.on{display:grid}
+.sp{width:46px;height:46px;border:5px solid #fff5;border-top-color:#fff;border-radius:50%;animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+.empty{padding:26px;text-align:center;color:var(--mut)}
+@media(max-width:640px){header h1{font-size:15px}.wrap{padding:10px}.btn{flex:1}th,td{padding:8px 7px;font-size:12.5px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:26px">🗓️</div>
+  <h1>Duty Allotted &amp; Conduct List<small id="who">Welcome</small></h1>
+  <button class="ib" id="th">🌙</button>
+  <button class="ib" id="lo">⏻ Logout</button>
+</header>
+<div id="load"><div class="sp"></div></div><div id="toast"></div>
+
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><b id="s1">0</b><span>Faculty</span></div>
+    <div class="stat"><b id="s2">0</b><span>Departments</span></div>
+    <div class="stat"><b id="s3">0</b><span>Duties Allotted</span></div>
+    <div class="stat"><b id="s4">0</b><span>Duties Today</span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-t="p1">👩‍🏫 Faculty List</button>
+    <button class="tab" data-t="p2">📝 Duty Allotted</button>
+    <button class="tab" data-t="p3">📊 Reports</button>
+  </div>
+
+  <!-- FACULTY -->
+  <div class="pane on" id="p1"><div class="card">
+    <h3>Faculty List</h3>
+    <div class="grid">
+      <div><label>Department</label><select id="fDept"></select></div>
+      <div><label>Search</label><input id="fQ" placeholder="Name / designation"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn g" onclick="dlFaculty('excel')">⬇ Excel</button>
+      <button class="btn r" onclick="dlFaculty('pdf')">⬇ PDF</button>
+      <button class="btn" onclick="dlFaculty('word')">⬇ Word</button>
+    </div>
+    <div class="hint">Choose a department to download that department only, or "All Departments" for the full list.</div>
+  </div>
+  <div class="card"><div class="tw" id="fTable"></div></div></div>
+
+  <!-- DUTY -->
+  <div class="pane" id="p2">
+    <div class="card"><h3>Allot a Duty</h3>
+      <div class="grid">
+        <div><label>Faculty Name</label><input id="dName" list="fl" placeholder="Type to search"><datalist id="fl"></datalist></div>
+        <div><label>Duty Date From</label><input type="date" id="dFrom"></div>
+        <div><label>Duty Date To (optional)</label><input type="date" id="dTo"></div>
+        <div><label>Session</label><select id="dSes"><option>FN</option><option>AN</option><option>Full</option></select></div>
+        <div><label>Nature of Duty</label><input id="dNat" placeholder="e.g. Invigilation"></div>
+        <div><button class="btn" style="width:100%" onclick="addOne()">＋ Allot Duty</button></div>
+      </div>
+      <div class="hint">One-day duty? Leave "To" blank. Duty is recorded under your name automatically.</div>
+    </div>
+    <div class="card"><h3>Bulk Upload</h3>
+      <div class="row">
+        <button class="btn o" onclick="template()">⬇ Download Format (with sample)</button>
+        <input type="file" id="up" accept=".xlsx,.xls,.csv" style="display:none">
+        <button class="btn g" onclick="up.click()">⬆ Upload Filled File</button>
+      </div>
+      <div class="hint">Columns: Faculty Name · Duty Date From · Duty Date To · Session (FN/AN/Full) · Nature of Duty. Existing duties are checked date &amp; session wise; clashes are listed and skipped.</div>
+      <div id="upRes"></div>
+    </div>
+    <div class="card"><h3>Allotted Duties</h3>
+      <div class="grid">
+        <div><label>Department</label><select id="lDept"></select></div>
+        <div><label>From</label><input type="date" id="lFrom"></div>
+        <div><label>To</label><input type="date" id="lTo"></div>
+        <div><label>Search</label><input id="lQ" placeholder="Name / nature"></div>
+      </div>
+      <div class="row" style="margin:12px 0">
+        <button class="btn g" onclick="dlDuties('excel')">⬇ Excel</button>
+        <button class="btn r" onclick="dlDuties('pdf')">⬇ PDF</button>
+        <button class="btn" onclick="dlDuties('word')">⬇ Word</button>
+      </div>
+      <div class="tw" id="dTable"></div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="pane" id="p3"><div class="card"><h3>Reports</h3>
+    <div class="grid">
+      <div><label>Report</label><select id="rType">
+        <option value="un">1. Unallotted Duty Faculty (Date wise)</option>
+        <option value="dep">2. Department wise Duty Faculty</option>
+        <option value="nat">3. Nature of Duty List</option></select></div>
+      <div><label>Department</label><select id="rDept"></select></div>
+      <div><label>From Date</label><input type="date" id="rFrom"></div>
+      <div><label>To Date</label><input type="date" id="rTo"></div>
+      <div id="rSesW"><label>Session</label><select id="rSes"><option value="Any">Whole day</option><option>FN</option><option>AN</option></select></div>
+      <div id="rNatW" style="display:none"><label>Nature of Duty</label><select id="rNat"></select></div>
+      <div><button class="btn" style="width:100%" onclick="genReport()">Generate</button></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn g" onclick="exportR('excel')">⬇ Excel</button>
+      <button class="btn r" onclick="exportR('pdf')">⬇ PDF</button>
+      <button class="btn" onclick="exportR('word')">⬇ Word</button>
+    </div>
+  </div>
+  <div class="card"><div id="rTitle" style="font-weight:700;margin-bottom:10px"></div><div class="tw" id="rTable"><div class="empty">Select options and press Generate.</div></div></div></div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw06BDOUogt7v9QDFZmJ7VzlB7LD4SWMfkjRlgMGofM8DQt1yRAfSLnSCh3zKJUFdIP/exec';   // <-- paste /exec URL
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let U=JSON.parse(sessionStorage.getItem('duty_user')||'null'); if(!U) location.replace('index.html');
+let FAC=[],DUT=[],REP=null;
+
+/* theme */
+function setTheme(t){document.documentElement.dataset.theme=t;$('th').textContent=t==='dark'?'☀️':'🌙';localStorage.setItem('theme',t)}
+setTheme(localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));
+$('th').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+$('lo').onclick=()=>{sessionStorage.removeItem('duty_user');location.replace('index.html')};
+$('who').textContent=`${U.name} · ${U.designation}`;
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab,.pane').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on')});
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3500)}
+async function api(p){
+  if(GAS_URL.startsWith('PASTE')){toast('Set GAS_URL first');throw 0}
+  $('load').classList.add('on');
+  try{const r=await (await fetch(GAS_URL,{method:'POST',body:JSON.stringify({...p,mail:U.mail,pass:U.pass})})).json();
+    if(!r.ok){toast(r.msg||'Error');if(/Session/.test(r.msg||'')){sessionStorage.clear();location.replace('index.html')}throw 0}
+    return r}
+  catch(e){if(e)toast('Connection error');throw e}
+  finally{$('load').classList.remove('on')}
+}
+
+/* dates */
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date());
+const fmt=s=>s?s.split('-').reverse().join('-'):'';
+function normDate(v){
+  if(v===''||v==null)return '';
+  if(v instanceof Date)return iso(new Date(v.getTime()+43200000));
+  if(typeof v==='number'){return iso(new Date(Math.round((v-25569)*864e5)+43200000+new Date().getTimezoneOffset()*6e4))}
+  v=String(v).trim();let m;
+  if(m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  if(m=v.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/))return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return v;
+}
+function eachDay(a,b){const r=[];let d=new Date(a+'T00:00:00');const e=new Date(b+'T00:00:00');while(d<=e){r.push(iso(d));d.setDate(d.getDate()+1)}return r}
+
+/* load */
+async function load(){
+  const [f,d]=await Promise.all([api({action:'faculty'}),api({action:'duties'})]);
+  FAC=f.data;DUT=d.data;init();
+}
+function depts(){return [...new Set(FAC.map(f=>f.dept))].sort()}
+function init(){
+  const dopt='<option value="">All Departments</option>'+depts().map(d=>`<option>${esc(d)}</option>`).join('');
+  ['fDept','lDept','rDept'].forEach(i=>{const v=$(i).value;$(i).innerHTML=dopt;$(i).value=v});
+  $('fl').innerHTML=FAC.map(f=>`<option value="${esc(f.name)}">${esc(f.dept)}</option>`).join('');
+  const nat=[...new Set(DUT.map(d=>d.nature))].sort();
+  $('rNat').innerHTML='<option value="">All Natures</option>'+nat.map(n=>`<option>${esc(n)}</option>`).join('');
+  $('s1').textContent=FAC.length;$('s2').textContent=depts().length;$('s3').textContent=DUT.length;
+  $('s4').textContent=DUT.filter(d=>d.from<=today()&&d.to>=today()).length;
+  renderFac();renderDut();
+}
+function table(h,r){return r.length?`<table><thead><tr>${h.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${r.map(x=>`<tr>${x.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'<div class="empty">No records found.</div>'}
+
+/* faculty */
+function facRows(){const d=$('fDept').value,q=$('fQ').value.toLowerCase();
+  return FAC.filter(f=>(!d||f.dept===d)&&(f.name+f.designation).toLowerCase().includes(q)).sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name))}
+function renderFac(){$('fTable').innerHTML=table(['S.No','Faculty Name','Designation','Department'],facRows().map((f,i)=>[i+1,esc(f.name),esc(f.designation),esc(f.dept)]))}
+$('fDept').onchange=$('fQ').oninput=renderFac;
+function dlFaculty(fmt_){const r=facRows();const d=$('fDept').value;
+  exportData(fmt_,'Faculty List'+(d?' – '+d+' Department':' – All Departments'),['S.No','Faculty Name','Designation','Department'],r.map((f,i)=>[i+1,f.name,f.designation,f.dept]),'Faculty_List')}
+
+/* duties */
+function dutRows(){const d=$('lDept').value,a=$('lFrom').value,b=$('lTo').value,q=$('lQ').value.toLowerCase();
+  return DUT.filter(x=>(!d||x.dept===d)&&(!a||x.to>=a)&&(!b||x.from<=b)&&(x.name+x.nature).toLowerCase().includes(q)).sort((x,y)=>x.from.localeCompare(y.from)||x.name.localeCompare(y.name))}
+const dH=['S.No','Faculty Name','Department','From','To','Session','Nature of Duty','Created By'];
+const dR=r=>r.map((x,i)=>[i+1,x.name,x.dept,fmt(x.from),fmt(x.to),x.session,x.nature,x.by]);
+function renderDut(){const r=dutRows();
+  $('dTable').innerHTML=table([...dH,'Action'],r.map((x,i)=>[i+1,esc(x.name),esc(x.dept),fmt(x.from),fmt(x.to),`<span class="badge ${x.session}">${x.session}</span>`,esc(x.nature),esc(x.by),`<button class="btn r sm" onclick="del('${x.id}')">🗑</button>`]))}
+['lDept','lFrom','lTo'].forEach(i=>$(i).onchange=renderDut);$('lQ').oninput=renderDut;
+function dlDuties(f){exportData(f,'Duty Allotted List',dH,dR(dutRows()),'Duty_Allotted_List')}
+async function del(id){if(!confirm('Delete this duty?'))return;await api({action:'delete',id});toast('Deleted');load()}
+
+function showResult(res,total){
+  let h=`<div class="conf" style="border-color:var(--ok);background:rgba(22,163,74,.08)">✅ ${res.saved} of ${total} duty record(s) saved.</div>`;
+  res.conflicts.forEach(c=>h+=`<div class="conf">⚠️ <b>Row ${c.row} – Conflict:</b> ${esc(c.name)} requested <b>${fmt(c.from)}${c.to!==c.from?' to '+fmt(c.to):''} (${c.session}) – ${esc(c.nature)}</b><br>
+    Existing duty: <b>${esc(c.ex.nature)}</b> · ${fmt(c.ex.from)}${c.ex.to!==c.ex.from?' to '+fmt(c.ex.to):''} · Session ${c.ex.session} · Created by ${esc(c.ex.by)} on ${esc(c.ex.on)}</div>`);
+  res.invalid.forEach(c=>h+=`<div class="conf inv">❗ <b>Row ${c.row}</b> ${esc(c.name||'')} – ${esc(c.reason)}</div>`);
+  $('upRes').innerHTML=h;
+}
+async function addOne(){
+  const r={name:$('dName').value.trim(),from:$('dFrom').value,to:$('dTo').value,session:$('dSes').value,nature:$('dNat').value.trim()};
+  if(!r.name||!r.from||!r.nature)return toast('Faculty, date and nature are required');
+  const res=await api({action:'add',rows:[r]});showResult(res,1);
+  if(res.saved){toast('Duty allotted');$('dNat').value='';$('dFrom').value=$('dTo').value='';}
+  load();
+}
+function template(){
+  const s=FAC.slice(0,3);const n=i=>s[i%Math.max(s.length,1)]?.name||'Dr. Sample Name';
+  const t=today(),t2=iso(new Date(Date.now()+864e5*2));
+  const aoa=[['Faculty Name','Duty Date From','Duty Date To','Session','Nature of Duty'],
+    [n(0),t,t,'FN','Invigilation'],[n(1),t,t2,'Full','Flying Squad'],[n(2),t2,'','AN','Valuation']];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:28},{wch:16},{wch:16},{wch:10},{wch:26}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Duty Allotted');
+  XLSX.writeFile(wb,'Duty_Allotted_Format.xlsx');
+}
+$('up').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});
+    const js=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    const g=(o,k)=>{const key=Object.keys(o).find(x=>x.toLowerCase().replace(/\s/g,'').includes(k));return key?o[key]:''};
+    const rows=js.map(o=>({name:String(g(o,'facultyname')).trim(),from:normDate(g(o,'datefrom')),to:normDate(g(o,'dateto')),session:String(g(o,'session')).trim().replace(/^full.*/i,'Full').toUpperCase().replace('FULL','Full'),nature:String(g(o,'nature')).trim()})).filter(r=>r.name||r.from||r.nature);
+    if(!rows.length)return toast('No data rows found');
+    const res=await api({action:'add',rows});showResult(res,rows.length);toast('Upload processed');load();
+  }catch(x){if(x)toast('Could not read file')}
+  e.target.value='';
+};
+
+/* reports */
+$('rType').onchange=()=>{const t=$('rType').value;$('rSesW').style.display=t==='un'?'':'none';$('rNatW').style.display=t==='nat'?'':'none'};
+function genReport(){
+  const t=$('rType').value,d=$('rDept').value,a=$('rFrom').value,b=$('rTo').value||a,ses=$('rSes').value,nat=$('rNat').value;
+  let title,H,R;
+  if(t==='un'){
+    if(!a)return toast('Select From date');if(b<a)return toast('To date is before From date');
+    const days=eachDay(a,b);if(days.length>92)return toast('Maximum 92 days');
+    const fac=FAC.filter(f=>!d||f.dept===d).sort((x,y)=>x.dept.localeCompare(y.dept)||x.name.localeCompare(y.name));
+    const need=ses==='Any'?['FN','AN']:[ses];R=[];
+    days.forEach(day=>fac.forEach(f=>{
+      const used=new Set();DUT.filter(x=>x.name===f.name&&x.from<=day&&x.to>=day).forEach(x=>(x.session==='Full'?['FN','AN']:[x.session]).forEach(s=>used.add(s)));
+      if(need.every(s=>!used.has(s)))R.push([fmt(day),f.name,f.designation,f.dept])}));
+    R=R.map((r,i)=>[i+1,...r]);H=['S.No','Date','Faculty Name','Designation','Department'];
+    title=`Unallotted Duty Faculty List – ${d||'All Departments'} – ${fmt(a)}${b!==a?' to '+fmt(b):''} (${ses==='Any'?'Whole Day':ses})`;
+  }else{
+    let r=DUT.filter(x=>(!d||x.dept===d)&&(!a||x.to>=a)&&(!b||x.from<=b)&&(t!=='nat'||!nat||x.nature===nat));
+    r.sort(t==='dep'?(x,y)=>x.dept.localeCompare(y.dept)||x.from.localeCompare(y.from)||x.name.localeCompare(y.name):(x,y)=>x.nature.localeCompare(y.nature)||x.from.localeCompare(y.from));
+    H=dH;R=dR(r);
+    title=t==='dep'?`Department wise Duty Faculty List – ${d||'All Departments'}`:`Nature of Duty List – ${nat||'All Natures'}`;
+    if(a)title+=` (${fmt(a)}${b!==a?' to '+fmt(b):''})`;
+  }
+  REP={title,H,R};$('rTitle').textContent=title+` — ${R.length} record(s)`;$('rTable').innerHTML=table(H,R.map(r=>r.map(esc)));
+}
+function exportR(f){if(!REP)return toast('Generate a report first');exportData(f,REP.title,REP.H,REP.R,'Report')}
+
+/* export engine */
+function exportData(f,title,H,R,name){
+  if(!R.length)return toast('Nothing to download');
+  const stamp=`Generated by ${U.name} (${U.designation}) on ${new Date().toLocaleString('en-GB')}`;
+  const file=name+'_'+today();
+  if(f==='excel'){
+    const ws=XLSX.utils.aoa_to_sheet([[title],[stamp],[],H,...R]);
+    ws['!cols']=H.map((h,i)=>({wch:Math.min(40,Math.max(String(h).length,...R.map(r=>String(r[i]??'').length))+3)}));
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:H.length-1}},{s:{r:1,c:0},e:{r:1,c:H.length-1}}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Report');XLSX.writeFile(wb,file+'.xlsx');
+  }else if(f==='pdf'){
+    const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:H.length>5?'landscape':'portrait',unit:'pt',format:'a4'});
+    const W=doc.internal.pageSize.getWidth();
+    doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Controller of Examinations',W/2,36,{align:'center'});
+    doc.setFontSize(11);doc.text(doc.splitTextToSize(title,W-80),W/2,54,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(100);doc.text(stamp,W/2,54+14*Math.ceil(doc.getTextWidth(title)/(W-80))+6,{align:'center'});
+    doc.autoTable({head:[H],body:R.map(r=>r.map(String)),startY:92,theme:'grid',styles:{fontSize:8.5,cellPadding:4,valign:'middle'},
+      headStyles:{fillColor:[37,99,235],textColor:255,halign:'center'},alternateRowStyles:{fillColor:[241,245,249]},margin:{left:30,right:30},
+      didDrawPage:d=>{doc.setFontSize(8);doc.setTextColor(120);doc.text('Page '+doc.internal.getNumberOfPages(),W-30,doc.internal.pageSize.getHeight()-14,{align:'right'})}});
+    doc.save(file+'.pdf');
+  }else{
+    const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>
+@page{size:A4 ${H.length>5?'landscape':'portrait'};margin:1.5cm}body{font-family:Calibri,Arial;font-size:11pt}
+h2,h3,p.c{text-align:center;margin:2px}table{border-collapse:collapse;width:100%;margin-top:12px}
+th{background:#2563eb;color:#fff;border:1px solid #444;padding:5px;font-size:10pt}td{border:1px solid #444;padding:4px;font-size:10pt}</style></head><body>
+<h2>Controller of Examinations</h2><h3>${esc(title)}</h3><p class="c" style="font-size:9pt;color:#555">${esc(stamp)}</p>
+<table><thead><tr>${H.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${R.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff',html],{type:'application/msword'}));a.download=file+'.doc';a.click();
+  }
+}
+load().catch(()=>{});
+</script>
+</body>
+</html>

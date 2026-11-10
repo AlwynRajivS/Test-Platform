@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duty Allotment Portal – Login</title>
+<style>
+:root{--bg:#eef2ff;--card:#fff;--tx:#0f172a;--mut:#64748b;--pri:#2563eb;--pri2:#7c3aed;--bd:#e2e8f0;--inp:#f8fafc}
+[data-theme=dark]{--bg:#0b1020;--card:#151b2f;--tx:#e5e7eb;--mut:#94a3b8;--bd:#263154;--inp:#0f1426}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);overflow:hidden;padding:16px;transition:.3s}
+.blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.45;animation:float 12s ease-in-out infinite;z-index:0}
+.b1{width:340px;height:340px;background:var(--pri);top:-80px;left:-80px}
+.b2{width:300px;height:300px;background:var(--pri2);bottom:-80px;right:-60px;animation-delay:-5s}
+@keyframes float{50%{transform:translate(40px,30px) scale(1.15)}}
+.card{position:relative;z-index:1;width:100%;max-width:410px;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:34px 28px;box-shadow:0 20px 50px rgba(0,0,0,.15);animation:pop .7s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:translateY(30px) scale(.95)}}
+.logo{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,var(--pri),var(--pri2));display:grid;place-items:center;font-size:30px;animation:pulse 2.5s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 12px rgba(37,99,235,.12)}}
+h1{margin:0;text-align:center;font-size:21px}
+p.sub{text-align:center;color:var(--mut);margin:6px 0 24px;font-size:13px}
+label{font-size:12px;font-weight:600;color:var(--mut)}
+.f{position:relative;margin:6px 0 16px}
+input{width:100%;padding:13px 14px;border:1.5px solid var(--bd);border-radius:12px;background:var(--inp);color:var(--tx);font-size:15px;outline:0;transition:.2s}
+input:focus{border-color:var(--pri);box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+.eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;background:none;border:0;font-size:16px}
+button.go{width:100%;padding:13px;border:0;border-radius:12px;color:#fff;font-weight:700;font-size:15px;cursor:pointer;background:linear-gradient(135deg,var(--pri),var(--pri2));transition:.2s}
+button.go:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(37,99,235,.35)}
+button.go:disabled{opacity:.7;cursor:wait}
+.err{color:#ef4444;font-size:13px;text-align:center;min-height:18px;margin-top:12px}
+.err.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.th{position:fixed;top:14px;right:14px;z-index:2;width:42px;height:42px;border-radius:50%;border:1px solid var(--bd);background:var(--card);cursor:pointer;font-size:18px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:r .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes r{to{transform:rotate(360deg)}}
+.foot{text-align:center;font-size:11px;color:var(--mut);margin-top:18px}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div>
+<button class="th" id="th" title="Toggle theme">🌙</button>
+<div class="card">
+  <div class="logo">🗓️</div>
+  <h1>Duty Allotment Portal</h1>
+  <p class="sub">Controller of Examinations · Secure Login</p>
+  <label>Mail ID</label>
+  <div class="f"><input id="mail" type="email" placeholder="name@college.edu" autocomplete="username"></div>
+  <label>Password</label>
+  <div class="f"><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"><button class="eye" id="eye" type="button">👁️</button></div>
+  <button class="go" id="go">Sign In</button>
+  <div class="err" id="err"></div>
+  <div class="foot">Access: COE · DECOE · ADCOE</div>
+</div>
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw06BDOUogt7v9QDFZmJ7VzlB7LD4SWMfkjRlgMGofM8DQt1yRAfSLnSCh3zKJUFdIP/exec';   // <-- paste /exec URL
+
+const $ = id => document.getElementById(id);
+function setTheme(t){document.documentElement.dataset.theme=t;$('th').textContent=t==='dark'?'☀️':'🌙';localStorage.setItem('theme',t)}
+setTheme(localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));
+$('th').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+$('eye').onclick=()=>$('pass').type=$('pass').type==='password'?'text':'password';
+if(sessionStorage.getItem('duty_user')) location.replace('duty.html');
+
+async function login(){
+  const mail=$('mail').value.trim(), pass=$('pass').value;
+  const e=$('err'); e.classList.remove('shake');
+  if(!mail||!pass){e.textContent='Enter Mail ID and Password';void e.offsetWidth;e.classList.add('shake');return}
+  if(GAS_URL.startsWith('PASTE')){e.textContent='Set GAS_URL in the code first';return}
+  $('go').disabled=true;$('go').innerHTML='<span class="spin"></span>Signing in…';e.textContent='';
+  try{
+    const r=await (await fetch(GAS_URL,{method:'POST',body:JSON.stringify({action:'login',mail,pass})})).json();
+    if(r.ok){
+      sessionStorage.setItem('duty_user',JSON.stringify({name:r.name,designation:r.designation,mail,pass}));
+      location.href='duty.html?name='+encodeURIComponent(r.name);
+    }else throw new Error(r.msg);
+  }catch(x){e.textContent=x.message||'Connection error';void e.offsetWidth;e.classList.add('shake')}
+  $('go').disabled=false;$('go').textContent='Sign In';
+}
+$('go').onclick=login;
+document.addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+</script>
+</body>
+</html>
