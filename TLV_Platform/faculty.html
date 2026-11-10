@@ -62,9 +62,12 @@ async function place(lat,lng){
 const geo=()=>new Promise(r=>navigator.geolocation.getCurrentPosition(p=>r(p),()=>r(null),{enableHighAccuracy:true,timeout:15000}));
 async function cam(q){const g=$('#g'+q);
  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){$('#fi'+q).click();return;}
- const gp=geo();let st;
- try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});}
- catch(e){g.textContent='❌ Camera blocked – allow camera access';return;}
+ const gp=geo();let st,er;
+ for(const c of [{video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false},{video:true,audio:false}]){
+  try{st=await navigator.mediaDevices.getUserMedia(c);break;}catch(e){er=e;if(e.name==='NotAllowedError'||e.name==='SecurityError')break;}}
+ if(!st){const n=er&&er.name,why=n==='NotAllowedError'?'Camera permission denied. Tap the 🔒 icon in the address bar → Permissions → allow Camera, then reload.':n==='NotFoundError'?'No camera found.':n==='NotReadableError'?'Camera is in use by another app.':'Camera unavailable'+(n?' ('+n+')':'')+'.';
+  g.innerHTML='❌ '+esc(why)+'<br><button type=button class="btn alt sm" id=nc'+q+'>📷 Use phone camera instead</button>';
+  $('#nc'+q).onclick=()=>$('#fi'+q).click();return;}
  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column';
  o.innerHTML='<video autoplay playsinline muted style="flex:1;min-height:0;width:100%;object-fit:contain"></video><div style="display:flex;justify-content:space-around;align-items:center;padding:16px;background:#000"><button type=button class="btn alt" id=cc>✕ Cancel</button><button type=button id=cs aria-label=Capture style="width:68px;height:68px;border-radius:50%;border:4px solid #fff;background:#e53935"></button><span style="width:80px"></span></div>';
  document.body.appendChild(o);const v=o.querySelector('video');v.srcObject=st;
