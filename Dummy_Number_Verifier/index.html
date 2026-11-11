@@ -1,0 +1,14 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login · Dummy Verification</title><link rel="stylesheet" href="app.css"></head>
+<body><button class="btn g s tg" style="position:fixed;top:12px;right:12px"></button>
+<div class="wrap"><div class="card login" style="text-align:center"><div class="logo">🔐</div><h2 style="margin:0">Dummy No. Verification</h2><p class="mu">Sign in to continue</p>
+<div style="text-align:left"><label>User ID</label><input id="id" autocomplete="username"><br><br><label>Password</label><input id="pw" type="password" autocomplete="current-password"><br><br>
+<button class="btn" style="width:100%" id="go">Login</button></div></div></div>
+<script src="app.js"></script><script>
+const dest=r=>r=='admin'?'admin.html':r=='verifier'?'verifier.html':null;
+const u=JSON.parse(sessionStorage.getItem('user')||'null');if(u&&dest(u.role))location.replace(dest(u.role));else sessionStorage.clear();
+async function login(){const id=$('#id').value.trim(),pw=$('#pw').value;if(!id||!pw)return toast('Enter ID and password','e');
+ const r=await api('login',{id,password:pw});sessionStorage.setItem('tk',r.token);sessionStorage.setItem('user',JSON.stringify(r.user));
+ if(!dest(r.user.role)){sessionStorage.clear();return toast('Role must be admin or verifier in Users sheet','e');}
+ location.replace(dest(r.user.role));}
+$('#go').onclick=login;$('#pw').onkeydown=e=>{if(e.key=='Enter')login();};
+</script></body></html>

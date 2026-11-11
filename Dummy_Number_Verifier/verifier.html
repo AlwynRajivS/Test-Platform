@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verifier</title><link rel="stylesheet" href="app.css"></head>
+<body><div class="top"><h1>✅ Verifier · <span id="me"></span></h1><button class="btn g s tg"></button><button class="btn g s" onclick="logout()">Logout</button></div>
+<div class="wrap">
+<div class="card"><div class="g2"><div><label>Date</label><select id="d"></select></div><div><label>Session</label><select id="s"></select></div><button class="btn" id="load">Open</button></div></div>
+<div class="card hide" id="box"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b id="ttl"></b><span class="chip" id="lk"></span></div>
+<p class="mu" id="pg" style="margin:8px 0 4px"></p><div class="bar"><i id="pb"></i></div><div id="list" style="margin-top:8px"></div>
+<br><button class="btn" id="cf" style="width:100%">Confirm &amp; Lock Session</button></div></div>
+<script src="app.js"></script><script>
+const me=guard('verifier');if(!me)throw new Error('redirect');$('#me').textContent=me.name;
+let S=[],items=[],locked=false;
+async function init(){
+ try{S=(await api('sessions')).rows;}catch(e){$('#d').innerHTML='<option value="">Load failed: '+esc(e.message)+'</option>';$('#s').innerHTML='';return;}
+ const ds=[...new Set(S.map(x=>x.date))];
+ $('#d').innerHTML=ds.length?ds.map(d=>`<option>${esc(d)}</option>`).join(''):'<option value="">No data found in Data sheet</option>';fill();}
+function fill(){const x=S.filter(r=>r.date==$('#d').value);
+ $('#s').innerHTML=x.map(r=>`<option value="${r.session}" ${r.locked?'disabled':''}>${r.session} – ${r.done}/${r.total}${r.locked?' 🔒 Locked':''}</option>`).join('');}
+$('#d').onchange=fill;
+async function load(){const d=$('#d').value,s=$('#s').value;if(!d||!s)return toast('No open session for this date – locked by admin','e');
+ const r=await api('list',{date:d,session:s});items=r.items;locked=r.locked;
+ $('#box').classList.remove('hide');$('#ttl').textContent=`${d} · ${s} · ${items.length} entries`;
+ $('#lk').textContent=locked?'🔒 Locked (view only)':'Open';$('#lk').className='chip '+(locked?'l':'');
+ $('#list').innerHTML=items.map((it,i)=>`<div class="vr ${cls(it.status)}" style="animation-delay:${Math.min(i,20)*25}ms"><b class="dn">${esc(it.dummy)}</b><span class="pf">${esc(it.prefix)}</span><input autocomplete="off" autocapitalize="characters" placeholder="remaining digits" value="${esc(it.typed)}" ${locked?'disabled':''}><span class="st ${cls(it.status)}">${ic(it.status)}</span></div>`).join('');
+ prog();}
+const cls=s=>s=='OK'?'ok':s=='WRONG'?'bad':'',ic=s=>s=='OK'?'✔':s=='WRONG'?'✖':'';
+function prog(){const n=items.filter(i=>i.typed).length;$('#pg').textContent=`${n} of ${items.length} entered`;
+ $('#pb').style.width=(items.length?n/items.length*100:0)+'%';$('#cf').disabled=locked||n<items.length;$('#cf').classList.toggle('hide',locked);}
+const L=$('#list');
+L.addEventListener('focusout',async e=>{if(e.target.tagName!='INPUT')return;
+ const row=e.target.closest('.vr'),i=[...L.children].indexOf(row),it=items[i],v=e.target.value.trim().toUpperCase();e.target.value=v;
+ if(v==it.typed)return;
+ try{const r=await api('save',{date:$('#d').value,session:$('#s').value,dummy:it.dummy,typed:v},true);
+  it.typed=v;it.status=r.status;row.className='vr '+cls(r.status);const st=row.querySelector('.st');st.className='st '+cls(r.status);st.textContent=ic(r.status);prog();}
+ catch(x){e.target.focus();}});
+L.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT'){e.preventDefault();const n=e.target.closest('.vr').nextElementSibling;n?n.querySelector('input').focus():e.target.blur();}});
+$('#load').onclick=load;
+$('#cf').onclick=async()=>{const w=items.filter(i=>i.status=='WRONG').length;
+ if(!confirm(`Confirm all ${items.length} entries?`+(w?`\n${w} mismatch(es) will be flagged to admin.`:'')+'\nThe session will be locked.'))return;
+ await api('confirm',{date:$('#d').value,session:$('#s').value});toast('Confirmed & locked','k');$('#box').classList.add('hide');await init();};
+init();
+</script></body></html>

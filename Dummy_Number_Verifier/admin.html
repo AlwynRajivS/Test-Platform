@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title><link rel="stylesheet" href="app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head>
+<body><div class="top"><h1>🛠 Admin · <span id="me"></span></h1><button class="btn g s tg"></button><button class="btn g s" onclick="logout()">Logout</button></div>
+<div class="wrap"><div class="tabs" id="tabs"></div>
+<div id="t_sum" class="tab"><div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>Date &amp; Session Summary</b><button class="btn s g" onclick="sum()">⟳ Refresh</button></div>
+<div class="stats" id="st" style="margin:12px 0"></div><div class="tw"><table id="sm"></table></div></div></div>
+<div id="t_up" class="tab hide"><div class="card"><b>Upload Data Sheet</b><p class="mu">Columns: Date (YYYY-MM-DD), Session (FN/AN), Register No., Dummy No. Re-uploading a Date+Session replaces its data.</p>
+<div class="g2"><button class="btn g" onclick="tpl()">⬇ Download Template</button><input type="file" id="f" accept=".xlsx,.xls,.csv"><button class="btn" onclick="upl()">⬆ Upload</button></div></div></div>
+<div id="t_us" class="tab hide"><div class="card"><b>Add User</b><br><br><div class="g2"><div><label>ID</label><input id="uid"></div><div><label>Name</label><input id="un"></div><div><label>Role</label><select id="ur"><option>verifier</option><option>admin</option></select></div><div><label>Password</label><input id="up"></div><button class="btn" onclick="addU()">Add</button></div></div>
+<div class="card tw"><table id="ut"></table></div></div>
+<div id="t_cf" class="tab hide"><div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>Conflicts</b><button class="btn s g" onclick="cf()">⟳ Refresh</button></div><div class="tw"><table id="ct"></table></div></div></div>
+<div id="t_rp" class="tab hide"><div class="card"><b>Excel Reports</b><br><br><div class="g2">
+<button class="btn" onclick="rep('sum')">📊 Date/Session Summary</button><button class="btn" onclick="rep('detail')">📋 Full Verification Detail</button><button class="btn" onclick="rep('cf')">⚠ Conflict Report</button><button class="btn" onclick="rep('data')">🗂 Data Sheet</button></div></div></div>
+</div>
+<script src="app.js"></script><script>
+const me=guard('admin');if(!me)throw new Error('redirect');$('#me').textContent=me.name;
+const T=[['sum','📊 Summary'],['up','⬆ Upload'],['us','👥 Users'],['cf','⚠ Conflicts'],['rp','⬇ Reports']];
+$('#tabs').innerHTML=T.map(t=>`<button class="btn g s" data-t="${t[0]}">${t[1]}</button>`).join('');
+function show(k){document.querySelectorAll('.tab').forEach(e=>e.classList.add('hide'));$('#t_'+k).classList.remove('hide');
+ document.querySelectorAll('#tabs .btn').forEach(b=>b.classList.toggle('on',b.dataset.t==k));({sum,us,cf}[k]||(()=>0))();}
+$('#tabs').onclick=e=>e.target.dataset.t&&show(e.target.dataset.t);
+const tb=(h,r)=>`<tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>`+r.join('')||'';
+let SM=[];
+async function sum(){SM=(await api('summary')).rows;
+ const t=k=>SM.reduce((a,r)=>a+r[k],0);
+ $('#st').innerHTML=[['Sessions',SM.length],['Entries',t('total')],['Verified',t('done')],['Correct',t('correct')],['Wrong',t('wrong')],['Locked',SM.filter(r=>r.locked).length]].map(x=>`<div class="stat"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
+ $('#sm').innerHTML=tb(['Date','Session','Total','Verified','Correct','Wrong','Pending','Status',''],SM.map((r,i)=>`<tr style="animation-delay:${i*30}ms"><td>${esc(r.date)}</td><td>${r.session}</td><td>${r.total}</td><td>${r.done}</td><td>${r.correct}</td><td>${r.wrong}</td><td>${r.total-r.done}</td><td><span class="chip ${r.locked?'l':r.done<r.total?'w':''}">${r.locked?'🔒 Locked':r.done<r.total?'In progress':'Open'}</span></td><td><button class="btn s ${r.locked?'':'r'}" onclick="lock(${i},${!r.locked})">${r.locked?'Unlock':'Lock'}</button></td></tr>`));}
+async function lock(i,v){await api('setLock',{date:SM[i].date,session:SM[i].session,locked:v});toast(v?'Locked':'Unlocked – verifier can edit again','k');sum();}
+async function addU(){await api('addUser',{id:$('#uid').value,name:$('#un').value,role:$('#ur').value,password:$('#up').value});toast('User added','k');['#uid','#un','#up'].forEach(x=>$(x).value='');us();}
+async function us(){const r=(await api('users')).rows;$('#ut').innerHTML=tb(['ID','Name','Role','Password',''],r.map(u=>`<tr><td>${esc(u[0])}</td><td>${esc(u[1])}</td><td><span class="chip">${esc(u[2])}</span></td><td>${esc(u[3])}</td><td><button class="btn s r" onclick="delU('${esc(u[0])}')">Delete</button></td></tr>`));}
+async function delU(id){if(!confirm('Delete '+id+'?'))return;await api('delUser',{id});us();}
+function tpl(){xl('Data_Template',['Date','Session','Register No.','Dummy No.'],[['2026-11-20','FN','2201010001','D1001'],['2026-11-20','AN','2201010002','D1002']]);}
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function nd(v){if(v instanceof Date)return ymd(new Date(v.getTime()+60000));v=String(v).trim();const m=v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:v;}
+async function upl(){const f=$('#f').files[0];if(!f)return toast('Choose a file','e');
+ const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true,raw:true});
+ const a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}).slice(1).filter(r=>r.some(c=>c!==''));
+ const rows=a.map(r=>[nd(r[0]),String(r[1]).toUpperCase().trim(),String(r[2]).trim(),String(r[3]).trim()]);
+ if(!confirm(`Upload ${rows.length} rows? Existing data for the same Date+Session will be replaced.`))return;
+ const r=await api('upload',{rows});toast(`Uploaded ${r.count} rows (${r.sessions} sessions)`,'k');$('#f').value='';}
+let CF=[];
+async function cf(){CF=(await api('conflicts')).rows;
+ $('#ct').innerHTML=CF.length?tb(['Type','Date','Sess','Dummy','Register No.','Typed','Verifier','Time'],CF.map(r=>`<tr><td><span class="chip l">${r[0]}</span></td>${r.slice(1).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`)):'<tr><td>✅ No conflicts found</td></tr>';}
+async function rep(k){
+ if(k=='sum'){const r=(await api('summary')).rows;return xl('Summary',['Date','Session','Total','Verified','Correct','Wrong','Pending','Locked','Confirmed By','Confirmed At'],r.map(x=>[x.date,x.session,x.total,x.done,x.correct,x.wrong,x.total-x.done,x.locked?'Yes':'No',x.by,x.at]));}
+ if(k=='cf'){const r=(await api('conflicts')).rows;return xl('Conflicts',['Type','Date','Session','Dummy No.','Register No.','Typed','Verifier','Time'],r);}
+ const r=(await api('report',{type:k})).rows;
+ k=='data'?xl('Data_Sheet',['Date','Session','Register No.','Dummy No.'],r):xl('Verification_Detail',['Date','Session','Dummy No.','Register No.','Typed Register','Status','Verifier','Time'],r);}
+show('sum');
+</script></body></html>
