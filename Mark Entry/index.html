@@ -1,0 +1,12 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="app.css"><title>COE Mark Entry · KCET</title></head>
+<body><div class="login"><i></i><i></i><i></i><div class="lc"><div class="crest">🎓</div><h2 style="text-align:center">Mark Entry Portal</h2><p class="mu" style="text-align:center;margin-top:4px">Kamaraj College of Engineering and Technology<br>Controller of Examinations Office</p>
+<div class="row"><input id="u" class="grow" placeholder="User name" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="row"><input id="p" class="grow" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="g" type="button" id="e">Show</button></div>
+<div class="row"><button id="b" class="grow">Sign in</button><button class="g" onclick="theme()" aria-label="Theme">◐</button></div><p id="m" style="color:var(--er);text-align:center;margin:6px 0 0"></p></div></div>
+<script src="config.js"></script><script src="app.js"></script><script>
+if(S)location=S.role+'.html';
+$('#e').onclick=()=>{const p=$('#p');p.type=p.type=='password'?'text':'password';$('#e').textContent=p.type=='password'?'Show':'Hide'};
+$('#p').addEventListener('keydown',e=>{if(e.key==='Enter')go()});$('#u').addEventListener('keydown',e=>{if(e.key==='Enter')$('#p').focus()});$('#b').onclick=go;
+async function go(){const b=$('#b');b.disabled=true;b.textContent='Signing in…';const r=await api('login',{u:$('#u').value.trim(),p:$('#p').value.trim()});
+if(r.ok){sessionStorage.cu=JSON.stringify(r);location=r.role+'.html'}else{$('#m').textContent=r.msg;b.disabled=false;b.textContent='Sign in'}}
+</script></body></html>

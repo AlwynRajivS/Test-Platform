@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="app.css"><title>Tabulator</title><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script></head>
+<body><div id="h"></div><main id="m"><div class="sk"></div></main><script src="config.js"></script><script src="app.js"></script><script>
+guard('tabulator');$('#h').innerHTML=head('Tabulator · Board '+S.board);
+let D,Q,cur;
+const sv=d=>D.marks.find(m=>m.DummyNo==d&&m.Locked=='YES'),pm=d=>D.marks.find(m=>m.DummyNo==d);
+async function load(){const r=await api('boot');if(!r.ok)return toast(r.msg);D=r;list()}
+function foils(){const f={};D.papers.forEach(p=>(f[p.FoilNo]=f[p.FoilNo]||{no:p.FoilNo,c:p.CourseCode,d:[]}).d.push(p.DummyNo));return Object.values(f).sort((a,b)=>nat(a.no,b.no))}
+const st=f=>f.d.every(sv)?['Saved','ok']:f.d.some(pm)?['Edit enabled','e']:['Pending','w'];
+function list(){cur=null;const F=foils(),n=F.filter(f=>st(f)[0]=='Saved').length;$('#m').innerHTML=`<div class="card"><h3>Foil cards · Board ${esc(S.board)}</h3><div class="bar"><i style="width:${F.length?n*100/F.length:0}%"></i></div><p class="mu">${n} of ${F.length} foil cards saved</p><div class="row"><input id="s" class="grow" placeholder="🔍 Search foil card no. or course" oninput="draw()"></div><div class="grid" id="g"></div></div>`;draw()}
+function draw(){const k=($('#s').value||'').toLowerCase();$('#g').innerHTML=foils().filter(f=>(f.no+f.c).toLowerCase().includes(k)).map(f=>{const s=st(f);return`<div class="fc" onclick="open_('${esc(f.no)}')"><b>${esc(f.no)}</b><br><span class="mu">${esc(f.c)} · ${f.d.length} papers</span><br><span class="tag ${s[1]}">${s[0]}</span></div>`}).join('')||'<p class="mu">No foil cards found.</p>'}
+function pdf(no){const ms=D.marks.filter(m=>m.FoilNo==no&&m.Locked=='YES');pdfReport([stmtSec(D,no,ms)],{orient:'p'}).save('MarkStatement_'+no+'.pdf')}
+function open_(no){const f=foils().find(x=>x.no==no);cur=f;Q=model(D,f.c);scrollTo(0,0);
+if(!Q.length)return toast('No question model is mapped for course '+f.c+'. Ask the admin.');
+if(f.d.every(sv)){const ms=f.d.map(sv),fa=D.faculty.find(x=>x.FacultyID==ms[0].FacultyID)||{};
+$('#m').innerHTML=`<div class="card"><button class="g" onclick="list()">← Back</button><h3>${esc(no)} · ${esc(f.c)}</h3><span class="tag ok">Saved · Evaluation date ${dmy(ms[0].EvalDate)}</span><div class="tw" style="margin-top:10px"><table><tr><th>Dummy No.</th><th>Total</th></tr>${ms.map(m=>`<tr><td>${esc(m.DummyNo)}</td><td><b>${m.Total}</b></td></tr>`).join('')}</table></div><p class="sign">${esc(fa.Name)}, ${esc(fa.Designation)},<br>Department of ${esc(fa.Department)}, ${esc(fa.Institution)}</p><div class="row"><button class="go" onclick="pdf('${esc(no)}')">⬇ Download PDF report</button></div><p class="mu">Locked. The admin must enable edit to change marks.</p></div>`;return}
+const old=pm(f.d[0]),ed=f.d.some(pm),pv={};f.d.forEach(d=>{const m=pm(d);if(m&&m.Marks)try{pv[d]=JSON.parse(m.Marks)}catch(e){}});
+$('#m').innerHTML=`<div class="card"><button class="g" onclick="list()">← Back</button><h3>${esc(no)} · ${esc(f.c)}</h3>${ed?'<span class="tag e">Edit enabled by admin · existing marks loaded</span>':''}
+<div class="row"><select id="ty" onchange="fl()"><option>Internal</option><option>External</option></select><select id="fa" class="grow"></select><input type="date" id="dt" value="${old&&old.EvalDate?String(old.EvalDate).slice(0,10):new Date().toISOString().slice(0,10)}"></div></div>
+${f.d.map(d=>`<div class="dc" data-d="${esc(d)}"><div class="dh"><b>${esc(d)}</b><span>Total <b class="t">0</b></span></div><div class="qg">${Q.map(q=>`<label>${q.id}<small>max ${q.max}</small><input class="m" inputmode="decimal" enterkeyhint="next" autocomplete="off" data-q="${q.id}" data-max="${q.max}" data-pair="${q.pair||''}" value="${(pv[d]||{})[q.id]??''}"></label>`).join('')}</div></div>`).join('')}
+<div class="sb"><button class="ok grow" onclick="save()" style="max-width:420px">💾 Save all marks</button></div>`;
+if(old&&old.FacultyID){const x=D.faculty.find(z=>z.FacultyID==old.FacultyID);if(x)$('#ty').value=x.Type}fl(old&&old.FacultyID);
+const A=[...document.querySelectorAll('input.m')];A.forEach(i=>{i.oninput=()=>chk(i);i.onkeydown=e=>{if(e.key=='Enter'){e.preventDefault();const L=A.filter(x=>!x.disabled),n=L[L.indexOf(i)+1];n?n.focus():i.blur()}};if(i.value!=='')chk(i,1)})}
+function chk(i,q){let v=i.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1');
+if(v!==''&&+v>+i.dataset.max){i.value='';v='';i.classList.add('bad');setTimeout(()=>i.classList.remove('bad'),500);toast('Mark exceeds the limit of '+i.dataset.max+' for '+i.dataset.q+'. Entry cleared.')}else i.value=v;
+const r=i.closest('.dc');if(i.dataset.pair){const o=[...r.querySelectorAll('[data-pair="'+i.dataset.pair+'"]')].find(x=>x!==i);o.disabled=v!=='';if(v!=='')o.value=''}
+r.querySelector('.t').textContent=[...r.querySelectorAll('input.m')].reduce((a,x)=>a+(+x.value||0),0)}
+function fl(sel){$('#fa').innerHTML='<option value="">Select faculty</option>'+D.faculty.filter(f=>f.Type==$('#ty').value).map(f=>`<option value="${esc(f.FacultyID)}" ${f.FacultyID==sel?'selected':''}>${esc(f.Name)} (${esc(f.FacultyID)})</option>`).join('')}
+async function save(){const fid=$('#fa').value,dt=$('#dt').value;if(!fid){toast('Select the evaluator first');$('#fa').focus();return}if(!dt){toast('Select the evaluation date');return}
+const rows=[...document.querySelectorAll('.dc')].map(r=>{const m={};r.querySelectorAll('input.m').forEach(i=>{if(i.value!=='')m[i.dataset.q]=+i.value});return{DummyNo:r.dataset.d,CourseCode:cur.c,FoilNo:cur.no,Marks:m,Total:+r.querySelector('.t').textContent,FacultyID:fid,EvalDate:dt,_n:Object.keys(m).length}});
+const empty=rows.filter(r=>!r._n).length,fa=D.faculty.find(x=>x.FacultyID==fid);
+const ok=await ask({icon:'📝',title:'Confirm all marks entered correctly?',body:`<div class="kv"><b>Foil card</b><span>${esc(cur.no)}</span><b>Course</b><span>${esc(cur.c)}</span><b>Evaluator</b><span>${esc(fa.Name)}</span><b>Eval. date</b><span>${dmy(dt)}</span><b>Papers</b><span>${rows.length}</span></div>${empty?'<p style="color:var(--er)">⚠ '+empty+' paper(s) have no marks entered.</p>':''}<div class="tw" style="max-height:170px;overflow:auto"><table><tr><th>Dummy No.</th><th>Total</th></tr>${rows.map(r=>'<tr><td>'+esc(r.DummyNo)+'</td><td><b>'+r.Total+'</b></td></tr>').join('')}</table></div><p class="mu">Marks will be locked after saving.</p>`});
+if(!ok)return;rows.forEach(r=>delete r._n);const r=await api('save',{rows});
+if(!r.ok)return toast(r.msg);toast('Marks saved successfully');const no=cur.no;await load();open_(no);pdf(no)}
+load();
+</script></body></html>

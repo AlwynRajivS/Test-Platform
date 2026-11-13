@@ -1,0 +1,45 @@
+const $=s=>document.querySelector(s),S=JSON.parse(sessionStorage.cu||'null');
+const COL='Kamaraj College of Engineering and Technology';
+document.documentElement.dataset.t=localStorage.t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+const theme=()=>{const d=document.documentElement.dataset;d.t=localStorage.t=d.t=='dark'?'light':'dark'};
+function bar(w){let l=$('#ld');if(!l){l=document.createElement('div');l.id='ld';document.body.append(l)}l.style.width=w+'%';if(w>=100)setTimeout(()=>l.style.width=0,400)}
+async function api(a,d={}){bar(60);try{const r=await fetch(GAS_URL,{method:'POST',body:JSON.stringify({a,u:S&&S.u,p:S&&S.p,...d})});return await r.json()}catch(e){return{ok:false,msg:'Network error. Check internet / GAS URL in config.js'}}finally{bar(100)}}
+function toast(m){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';document.body.append(t)}t.textContent=m;t.className='s';clearTimeout(t.k);t.k=setTimeout(()=>t.className='',3200)}
+function guard(r){if(!S||S.role!=r)location='index.html'}
+function logout(){sessionStorage.clear();location='index.html'}
+function head(t){return`<header><b>${COL}<small>Office of the Controller of Examinations · ${t}</small></b><button onclick="theme()" aria-label="Theme">◐</button><button onclick="logout()">Logout</button></header>`}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nat=(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true});
+function modal(h){const m=document.createElement('div');m.className='mo';m.innerHTML=`<div class="mb">${h}</div>`;m.onclick=e=>{if(e.target==m)m.remove()};document.body.append(m);return m}
+function ask(o){return new Promise(r=>{const m=modal(`<div class="ic">${o.icon||'✅'}</div><h3>${o.title}</h3>${o.body||''}<div class="row end"><button class="g" id="n">${o.no||'Review again'}</button><button class="${o.cls||'ok'}" id="y">${o.yes||'Yes, save'}</button></div>`);m.querySelector('#n').onclick=()=>{m.remove();r(false)};m.querySelector('#y').onclick=()=>{m.remove();r(true)}})}
+function count(el,to){let i=0,s=Math.max(1,Math.ceil(to/30));const t=setInterval(()=>{i=Math.min(to,i+s);el.textContent=i;if(i>=to)clearInterval(t)},25)}
+// ---- question model ----
+function qlist(parts){const q=[];parts.forEach(p=>{for(let i=1;i<=p.count;i++){if(p.type=='either')['a','b'].forEach(x=>q.push({id:`${p.n}${i}${x}`,max:+p.mark,pair:`${p.n}${i}`}));else q.push({id:`${p.n}${i}`,max:+p.mark})}});return q}
+function model(D,course){const c=D.courses.find(x=>x.CourseCode==course);const p=c&&D.patterns.find(x=>x.PatternId==c.ModelNo||x.Model==c.ModelNo);return p?qlist(JSON.parse(p.Parts)):[]}
+// ---- report engine (Times New Roman, auto portrait/landscape) ----
+const dmy=s=>{const m=String(s||'').match(/(\d{4})-(\d\d)-(\d\d)/);return m?`${m[3]}-${m[2]}-${m[1]}`:String(s||'')};
+const nowStr=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return`${p(d.getDate())}-${p(d.getMonth()+1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`};
+const evTxt=f=>f?`${f.Name}, ${f.Designation}, Department of ${f.Department}, ${f.Institution}`:'';
+function stmtSec(D,no,ms){ms=[...ms].sort((a,b)=>nat(a.DummyNo,b.DummyNo));const c=D.courses.find(x=>x.CourseCode==ms[0].CourseCode)||{},fa=D.faculty.find(x=>x.FacultyID==ms[0].FacultyID)||null;
+return{title:'MARK STATEMENT',meta:[['Foil Card No.',no],['Course',`${c.CourseCode||''} - ${c.CourseName||''}`],['Board',c.Board||''],['Evaluation Date',dmy(ms[0].EvalDate)],['No. of Papers',ms.length]],head:['S.No.','Dummy Number','Total Mark'],rows:ms.map((m,i)=>[i+1,m.DummyNo,m.Total]),ev:fa,evDate:dmy(ms[0].EvalDate)}}
+function pairs(m){const r=[];for(let i=0;i<m.length;i+=2)r.push([m[i][0]+' :',m[i][1],m[i+1]?m[i+1][0]+' :':'',m[i+1]?m[i+1][1]:'']);return r}
+function pdfReport(secs,o={}){const {jsPDF}=window.jspdf,pick=s=>o.orient=='p'||o.orient=='l'?o.orient:(s.head.length>8?'l':'p');
+const d=new jsPDF({orientation:pick(secs[0]),unit:'mm',format:'a4'});
+const hdr=(s,full)=>{const W=d.internal.pageSize.getWidth();d.setTextColor(40);d.setFont('times','bold');d.setFontSize(full?17:11);d.text(COL.toUpperCase(),W/2,full?15:12,{align:'center'});
+d.setFontSize(full?11.5:9);d.text('OFFICE OF THE CONTROLLER OF EXAMINATIONS',W/2,full?21:16.5,{align:'center'});d.setDrawColor(90,20,30);d.setLineWidth(.7);d.line(14,full?24:19,W-14,full?24:19);d.setLineWidth(.2);d.line(14,full?25.2:20.2,W-14,full?25.2:20.2);
+d.setFontSize(full?13:10);d.text(s.title,W/2,full?32:25,{align:'center',maxWidth:W-28});return full?35:0};
+secs.forEach((s,i)=>{if(i)d.addPage('a4',pick(s));const W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight(),st=d.internal.getCurrentPageInfo().pageNumber;let y=hdr(s,true);
+const mp=pairs(s.meta),lw=31;d.autoTable({body:mp,startY:y-1,theme:'plain',margin:{left:14,right:14},styles:{font:'times',fontSize:10.5,cellPadding:{top:.5,bottom:.5,left:0,right:2},textColor:30},columnStyles:{0:{fontStyle:'bold',cellWidth:lw},1:{cellWidth:(W-28-2*lw)/2},2:{fontStyle:'bold',cellWidth:lw},3:{cellWidth:(W-28-2*lw)/2}}});
+const n=s.head.length,fs=n>20?7:n>14?8.5:n>8?9.5:11;
+d.autoTable({head:[s.head],body:s.rows,startY:d.lastAutoTable.finalY+3,theme:'grid',margin:{top:29,left:14,right:14,bottom:18},styles:{font:'times',fontSize:fs,halign:'center',valign:'middle',cellPadding:n>14?1.2:2,lineColor:[70,70,70],lineWidth:.2,textColor:20},headStyles:{fillColor:[232,222,224],textColor:20,fontStyle:'bold',lineWidth:.3},alternateRowStyles:{fillColor:[250,248,248]},didDrawPage:h=>{if(h.pageNumber>st)hdr(s,false)}});
+let by=d.lastAutoTable.finalY+14;if(by>H-52){d.addPage('a4',W>H?'l':'p');hdr(s,false);by=34}
+d.setFont('times','normal');d.setFontSize(11);d.setTextColor(30);
+if(s.evDate){d.text(`Evaluation Date : ${s.evDate}`,14,by+10);d.text(`Total Papers : ${s.rows.length}`,14,by+16)}
+if(s.ev){const x=W-14,yy=by+20;d.setDrawColor(40);d.line(x-90,yy,x,yy);d.setFont('times','bold');d.text(s.ev.Name,x,yy+5,{align:'right'});d.setFont('times','normal');d.text(s.ev.Designation,x,yy+10.5,{align:'right'});d.text(`Department of ${s.ev.Department}`,x,yy+16,{align:'right'});d.text(s.ev.Institution,x,yy+21.5,{align:'right',maxWidth:100});d.setFontSize(9.5);d.text('Signature of the Evaluator',x,yy-1.5,{align:'right'})}});
+const N=d.getNumberOfPages();for(let i=1;i<=N;i++){d.setPage(i);const W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight();d.setFont('times','italic');d.setFontSize(8.5);d.setTextColor(90);d.setDrawColor(150);d.line(14,H-12,W-14,H-12);d.text('Report generated on '+nowStr(),14,H-7.5);d.text('Confidential',W/2,H-7.5,{align:'center'});d.text(`Page ${i} of ${N}`,W-14,H-7.5,{align:'right'})}
+return d}
+function htmlReport(secs,o={}){const pick=s=>o.orient=='p'||o.orient=='l'?o.orient:(s.head.length>8?'l':'p');
+return`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>@page SP{size:210mm 297mm;margin:14mm;mso-page-orientation:portrait}@page SL{size:297mm 210mm;margin:14mm;mso-page-orientation:landscape}div.SP{page:SP}div.SL{page:SL}body,td,th,p{font-family:'Times New Roman',Times,serif;font-size:11pt}.c{text-align:center}table.d{border-collapse:collapse;width:100%}table.d td,table.d th{border:1px solid #000;padding:4px;text-align:center}table.d th{background:#e8dee0}</style></head><body>`+
+secs.map(s=>`<div class="S${pick(s).toUpperCase()}"><p class="c" style="margin:0"><b style="font-size:17pt">${COL.toUpperCase()}</b><br><b>OFFICE OF THE CONTROLLER OF EXAMINATIONS</b></p><hr style="border:1.5px double #5a1420"><p class="c"><b style="font-size:13pt">${esc(s.title)}</b></p><table style="width:100%">${pairs(s.meta).map(m=>`<tr><td><b>${esc(m[0])}</b></td><td>${esc(m[1])}</td><td><b>${esc(m[2])}</b></td><td>${esc(m[3])}</td></tr>`).join('')}</table><br><table class="d"><tr>${s.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${s.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table><br>${s.evDate?`<p>Evaluation Date : ${esc(s.evDate)}<br>Total Papers : ${s.rows.length}</p>`:''}${s.ev?`<p style="text-align:right"><br><br>_______________________<br>Signature of the Evaluator<br><b>${esc(s.ev.Name)}</b><br>${esc(s.ev.Designation)}<br>Department of ${esc(s.ev.Department)}<br>${esc(s.ev.Institution)}</p>`:''}<p><i style="font-size:9pt">Report generated on ${nowStr()}</i></p></div><br style="page-break-before:always">`).join('')+'</body></html>'}
+function saveBlob(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+function exportReport(fmt,secs,name,o){if(fmt=='pdf')pdfReport(secs,o).save(name+'.pdf');else if(fmt=='doc')saveBlob(new Blob(['\ufeff'+htmlReport(secs,o)],{type:'application/msword'}),name+'.doc');else saveBlob(new Blob(['\ufeff'+htmlReport(secs,o)],{type:'application/vnd.ms-excel'}),name+'.xls')}

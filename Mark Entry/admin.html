@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="app.css"><title>Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script></head>
+<body><div id="h"></div><main><div class="tabs" id="tb"></div><div id="v"><div class="sk"></div></div></main><script src="config.js"></script><script src="app.js"></script><script>
+guard('admin');$('#h').innerHTML=head('Administrator');
+const T={Users:{k:'UserName',c:['UserName','Password','Role','Board'],d:'users',x:['admin2','Pass@123','Tabulator','ECE']},Courses:{k:'CourseCode',c:['CourseCode','CourseName','Board','ModelNo'],d:'courses',x:['EC3401','Digital Electronics','ECE','R2023-M1']},Papers:{k:'DummyNo',c:['FoilNo','DummyNo','RegNo','CourseCode'],d:'papers',x:['F001','D1001','921023106001','EC3401']},Faculty:{k:'FacultyID',c:['FacultyID','Name','Designation','Department','Institution','Type','Board'],d:'faculty',x:['F101','S. Alwyn Rajiv','Assistant Professor','ECE','Kamaraj College of Engineering and Technology, Virudhunagar','Internal','ECE']}};
+const TABS=['Dashboard','Pattern','Users','Courses','Papers','Faculty','Edit control','Reports'],ICO={Dashboard:'📊',Pattern:'🧩',Users:'👤',Courses:'📚',Papers:'📄',Faculty:'🎓','Edit control':'🔓',Reports:'🖨'};
+let D,tab='Dashboard',parts=[],xb=[];
+const norm=()=>{D.courses.forEach(c=>c.CourseCode=String(c.CourseCode))};
+async function load(){const r=await api('boot');if(!r.ok)return toast(r.msg);D=r;show(tab)}
+function show(t){tab=t;$('#tb').innerHTML=TABS.map(x=>`<button class="${x==t?'on':''}" onclick="show('${x}')">${ICO[x]} ${x}</button>`).join('');
+const f={Dashboard:dash,Pattern:pat,'Edit control':ctl,Reports:rep}[t];f?f():tbl(t)}
+const opt=(a,v)=>a.map(x=>`<option ${x==v?'selected':''}>${esc(x)}</option>`).join('');
+const boards=()=>[...new Set([...D.users.map(u=>u.Board),...D.courses.map(c=>c.Board),...D.faculty.map(f=>f.Board),...xb].map(x=>String(x).trim()).filter(Boolean))].sort();
+const SEL={Role:()=>['Admin','Tabulator','Faculty'],Type:()=>['Internal','External'],Board:boards,ModelNo:()=>D.patterns.map(p=>p.PatternId)};
+const LBL={ModelNo:'Question paper model',Board:'Board',Type:'Type (Internal / External)',Role:'Role'};
+function fld(x){return SEL[x]?`<select id="f_${x}" class="grow" ${x=='Board'?'onchange="nb(this)"':''}><option value="">${LBL[x]}…</option>${opt(SEL[x]())}${x=='Board'?'<option value="__new">＋ New board…</option>':''}</select>`:`<input id="f_${x}" class="grow" placeholder="${x}" ${x=='Password'?'':'autocomplete="off"'}>`}
+function nb(s){if(s.value!='__new')return;const v=(prompt('Enter new board name')||'').trim().toUpperCase();if(v){xb.push(v);s.insertAdjacentHTML('afterbegin',`<option>${esc(v)}</option>`);s.value=v}else s.value=''}
+function dash(){const fo=new Set(D.papers.map(p=>p.FoilNo)),sv=D.marks.filter(m=>m.Locked=='YES').length;
+$('#v').innerHTML=`<div class="grid">${[['Courses',D.courses.length],['Foil cards',fo.size],['Papers',D.papers.length],['Marks saved',sv],['Pending',D.papers.length-sv],['Faculty',D.faculty.length]].map(x=>`<div class="card"><div class="stat" data-n="${x[1]}">0</div>${x[0]}</div>`).join('')}</div>
+<div class="card"><h3>Evaluation progress</h3><div class="bar"><i style="width:${D.papers.length?sv*100/D.papers.length:0}%"></i></div><p class="mu">${sv} of ${D.papers.length} papers saved</p></div>`;
+document.querySelectorAll('[data-n]').forEach(e=>count(e,+e.dataset.n))}
+// ----- generic tables -----
+function tbl(n){const c=T[n],rows=D[c.d];$('#v').innerHTML=`<div class="card"><h3>${n}</h3><div class="row"><button class="go" onclick="tpl('${n}')">⬇ Download Excel template</button><label class="btn">⬆ Upload Excel / CSV<input type="file" hidden accept=".xlsx,.xls,.csv" onchange="up('${n}',this.files[0]);this.value=''"></label></div>
+<div class="row">${c.c.map(fld).join('')}</div><div class="row"><button onclick="add('${n}')">Add / update</button><button class="g" onclick="show('${n}')">Clear</button></div></div>
+<div class="card"><div class="row"><input id="q" class="grow" placeholder="🔍 Search ${n}" oninput="rt('${n}')"><span class="mu">${rows.length} records · first 100 matches shown</span></div><div class="tw" id="t"></div></div>`;rt(n)}
+function rt(n){const c=T[n],k=($('#q').value||'').toLowerCase();$('#t').innerHTML=`<table><tr>${c.c.map(x=>`<th>${x}</th>`).join('')}<th></th></tr>${D[c.d].filter(r=>!k||JSON.stringify(r).toLowerCase().includes(k)).slice(0,100).map(r=>`<tr>${c.c.map(x=>`<td>${esc(x=='Password'?'••••':r[x])}</td>`).join('')}<td style="white-space:nowrap"><button class="g" onclick='ed("${n}",${JSON.stringify(String(r[c.k]))})'>Edit</button> <button class="d" onclick='dl("${n}",${JSON.stringify(String(r[c.k]))})'>✕</button></td></tr>`).join('')}</table>`}
+function ed(n,k){const r=D[T[n].d].find(x=>String(x[T[n].k])==k);T[n].c.forEach(x=>{const e=$('#f_'+x);if(e)e.value=r[x]});scrollTo({top:0,behavior:'smooth'})}
+async function add(n){const o={};T[n].c.forEach(x=>o[x]=$('#f_'+x).value.trim());if(!o[T[n].k])return toast('Enter '+T[n].k);const r=await api('upsert',{sheet:n,rows:[o]});toast(r.ok?'Saved':r.msg);if(r.ok)await load()}
+async function dl(n,k){if(await ask({icon:'🗑',title:'Delete '+k+'?',cls:'d',yes:'Delete',no:'Cancel'})){await api('del',{sheet:n,key:k});toast('Deleted');await load()}}
+function tpl(n){const c=T[n],wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([c.c,c.x]),n);XLSX.writeFile(wb,n+'_Template.xlsx')}
+function up(n,f){if(!f)return;const rd=new FileReader();rd.onload=async e=>{const w=XLSX.read(e.target.result,{type:'array'}),c=T[n],rows=XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]],{defval:'',raw:false}).map(r=>{const o={};c.c.forEach(k=>o[k]=String(r[k]??'').trim());return o}).filter(o=>o[c.k]);
+if(!rows.length)return toast('No valid rows. Use the downloaded template.');toast('Uploading '+rows.length+' rows…');
+for(let i=0;i<rows.length;i+=400){const r=await api('upsert',{sheet:n,rows:rows.slice(i,i+400)});if(!r.ok)return toast(r.msg)}toast('Uploaded '+rows.length+' rows');await load()};rd.readAsArrayBuffer(f)}
+// ----- question pattern -----
+function pat(){if(!parts.length)parts=[{n:'A',mark:2,count:10,type:'compulsory'}];
+$('#v').innerHTML=`<div class="card"><h3>Create question pattern</h3><div class="row"><input id="rg" class="grow" placeholder="Regulation (e.g. R2023)"><input id="md" class="grow" placeholder="Model No. (e.g. M1)"></div><div id="pp"></div><div class="row"><button class="g" onclick="parts.push({n:String.fromCharCode(65+parts.length),mark:2,count:5,type:'compulsory'});pp()">＋ Add part</button><button onclick="spat()">Save pattern</button></div><p class="mu" id="tt"></p></div>
+<div class="card"><h3>Saved patterns</h3>${D.patterns.map(p=>`<div class="row"><b>${esc(p.PatternId)}</b><span class="mu grow">${JSON.parse(p.Parts).map(x=>`${x.n}: ${x.count}×${x.mark} ${x.type=='either'?'(either/or)':''}`).join(' | ')}</span><button class="d" onclick="dl('Patterns','${esc(p.PatternId)}')">✕</button></div>`).join('')||'<p class="mu">None yet.</p>'}</div>`;pp()}
+function pp(){$('#pp').innerHTML=parts.map((p,i)=>`<div class="row"><span>Part</span><input style="width:60px" value="${esc(p.n)}" onchange="parts[${i}].n=this.value"><span>Mark</span><input type="number" inputmode="numeric" style="width:76px" value="${p.mark}" onchange="parts[${i}].mark=+this.value;pp()"><span>Questions</span><input type="number" inputmode="numeric" style="width:76px" value="${p.count}" onchange="parts[${i}].count=+this.value;pp()"><select onchange="parts[${i}].type=this.value;pp()"><option value="compulsory" ${p.type=='compulsory'?'selected':''}>Compulsory</option><option value="either" ${p.type=='either'?'selected':''}>Either / Or</option></select><button class="d" onclick="parts.splice(${i},1);pp()">✕</button></div>`).join('');
+$('#tt').textContent='Maximum total: '+parts.reduce((a,p)=>a+p.mark*p.count,0)+' marks'}
+async function spat(){const R=$('#rg').value.trim(),M=$('#md').value.trim();if(!R||!M)return toast('Enter regulation and model no.');
+const r=await api('upsert',{sheet:'Patterns',rows:[{PatternId:R+'-'+M,Regulation:R,Model:M,Parts:JSON.stringify(parts.map(p=>({...p,mark:+p.mark,count:+p.count})))}]});toast(r.ok?'Pattern saved':r.msg);parts=[];await load()}
+// ----- edit control -----
+function ctl(){const f={};D.marks.filter(m=>m.Locked=='YES').forEach(m=>(f[m.FoilNo]=f[m.FoilNo]||{n:0,c:m.CourseCode,d:m.EvalDate}).n++);
+$('#v').innerHTML=`<div class="card"><h3>Enable mark editing</h3><p class="mu">Enabling a foil card unlocks all its dummy numbers. The tabulator sees the existing marks and the update overwrites them.</p>${Object.keys(f).sort(nat).map(k=>`<div class="row"><b class="grow">${esc(k)} <span class="mu">${esc(f[k].c)}</span></b><span class="tag">${f[k].n} papers · ${dmy(f[k].d)}</span><button onclick="un('${esc(k)}')">Enable edit</button></div>`).join('')||'<p class="mu">No locked foil cards.</p>'}</div>`}
+async function un(k){if(!await ask({icon:'🔓',title:'Enable editing for foil card '+k+'?',body:'<p class="mu" style="text-align:center">All dummy numbers of this foil card will be unlocked.</p>',yes:'Enable',no:'Cancel'}))return;await api('unlock',{foil:k});toast('Edit enabled');await load()}
+// ----- reports -----
+const R={1:'COURSE WISE MARK REPORT WITH QUESTION SPLIT-UP',2:'COURSE WISE TOTAL MARK REPORT',3:'BOARD WISE MARK REPORT WITH QUESTION SPLIT-UP',4:'FOIL CARD WISE MARK REPORT WITH QUESTION SPLIT-UP',5:'FOIL CARD WISE TOTAL MARK REPORT',6:'EVALUATOR WISE REPORT'};
+const KY=k=>({1:x=>x.CourseCode,2:x=>x.CourseCode,3:x=>cb(x.CourseCode),4:x=>x.FoilNo,5:x=>x.FoilNo,6:x=>x.FacultyID}[k]);
+const cb=c=>(D.courses.find(x=>x.CourseCode==c)||{}).Board;
+function rep(){$('#v').innerHTML=`<div class="card"><h3>Reports</h3><div class="row"><select id="rk" class="grow" onchange="rf()">${Object.keys(R).map(k=>`<option value="${k}">${k}. ${R[k].toLowerCase().replace(/^./,c=>c.toUpperCase())}</option>`).join('')}</select><select id="rf" class="grow"></select><select id="ro"><option value="">Auto orientation</option><option value="p">Portrait</option><option value="l">Landscape</option></select></div>
+<div class="row"><button onclick="out('pdf')">📕 PDF</button><button class="ok" onclick="out('xls')">📗 Excel</button><button class="go" onclick="out('doc')">📘 Word</button></div><p class="mu">All reports use Times New Roman with evaluation date and generation time. Register numbers appear only in reports 1 and 2. Only saved (locked) marks are included.</p></div>`;rf()}
+function rf(){const k=+$('#rk').value,ky=KY(k),v=[...new Set(D.marks.filter(m=>m.Locked=='YES').map(ky))].filter(Boolean).sort(nat);
+$('#rf').innerHTML='<option value="">All '+({1:'courses',2:'courses',3:'boards',4:'foil cards',5:'foil cards',6:'evaluators'}[k])+'</option>'+v.map(x=>`<option value="${esc(x)}">${esc(k==6?((D.faculty.find(f=>f.FacultyID==x)||{}).Name||'')+' ('+x+')':x)}</option>`).join('')}
+function build(){const k=+$('#rk').value,f=$('#rf').value,ky=KY(k),pm={},fm={},cr={};D.papers.forEach(p=>pm[p.DummyNo]=p);D.faculty.forEach(x=>fm[x.FacultyID]=x);D.courses.forEach(c=>cr[c.CourseCode]=c);
+let m=D.marks.filter(x=>x.Locked=='YES');if(f)m=m.filter(x=>String(ky(x))==f);
+const split=[1,3,4].includes(k),G={};m.forEach(x=>{const g=k==6?x.FacultyID:ky(x)+'|'+x.CourseCode;(G[g]=G[g]||[]).push(x)});
+return Object.keys(G).sort(nat).map(g=>{const rows=G[g].sort((a,b)=>nat(a.FoilNo,b.FoilNo)||nat(a.DummyNo,b.DummyNo)),x0=rows[0],cc=x0.CourseCode,c=cr[cc]||{},fa=fm[x0.FacultyID]||null,Q=split?model(D,cc):[];
+const eds=[...new Set(rows.map(x=>dmy(x.EvalDate)))].filter(Boolean).join(', '),fl=[...new Set(rows.map(x=>x.FoilNo))],tot=x=>x.Total;
+let meta,head,body;
+if(k==6){meta=[['Evaluator',fa?fa.Name:g],['Designation',fa?fa.Designation:''],['Department',fa?fa.Department:''],['Institution',fa?fa.Institution:''],['Evaluation Date(s)',eds],['Papers Evaluated',rows.length]];head=['S.No.','Foil No.','Course Code','Dummy No.','Total'];body=rows.map((x,i)=>[i+1,x.FoilNo,x.CourseCode,x.DummyNo,tot(x)])}
+else{meta=[['Course',cc+' - '+(c.CourseName||'')],['Board',c.Board||''],['Question Model',c.ModelNo||''],[fl.length>4?'Foil Cards':'Foil Card No.',fl.length>4?fl.length+' foil cards':fl.join(', ')],['Evaluation Date',eds],['No. of Papers',rows.length]];if(k>3)meta.push(['Evaluator',fa?evTxt(fa):'']);
+const qv=x=>{const mk=JSON.parse(x.Marks||'{}');return Q.map(q=>mk[q.id]===undefined?'':mk[q.id])};
+if(k<3){head=['S.No.','Dummy No.','Register No.',...Q.map(q=>q.id),'Total'];body=rows.map((x,i)=>[i+1,x.DummyNo,(pm[x.DummyNo]||{}).RegNo||'',...qv(x),tot(x)])}
+else{head=['S.No.','Foil No.','Dummy No.',...Q.map(q=>q.id),'Total'];body=rows.map((x,i)=>[i+1,x.FoilNo,x.DummyNo,...qv(x),tot(x)])}}
+return{title:R[k],meta,head,rows:body,ev:k>=4?fa:null,evDate:k>=4?eds:null}})}
+function out(fmt){const S_=build();if(!S_.length)return toast('No saved marks for this selection');exportReport(fmt,S_,'COE_Report_'+$('#rk').value,{orient:$('#ro').value})}
+load();
+</script></body></html>

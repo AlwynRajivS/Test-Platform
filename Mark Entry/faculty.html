@@ -1,0 +1,20 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="app.css"><title>Faculty</title><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script></head>
+<body><div id="h"></div><main id="m"><div class="sk"></div></main><script src="config.js"></script><script src="app.js"></script><script>
+guard('faculty');$('#h').innerHTML=head('Mark statement printing');
+let D,tab='NO',board='';
+async function load(){const r=await api('boot');if(!r.ok)return toast(r.msg);D=r;draw()}
+const cb=c=>(D.courses.find(x=>x.CourseCode==c)||{}).Board;
+function foils(){const f={};D.marks.filter(m=>m.Locked=='YES').forEach(m=>{(f[m.FoilNo]=f[m.FoilNo]||{no:m.FoilNo,c:m.CourseCode,p:m.Printed,r:[]}).r.push(m)});return Object.values(f).filter(f=>!board||cb(f.c)==board).sort((a,b)=>nat(a.no,b.no))}
+function draw(){const A=foils(),b=A.filter(f=>f.p!='YES'),a=A.filter(f=>f.p=='YES'),bs=[...new Set(D.courses.map(c=>c.Board))].sort();
+$('#m').innerHTML=`<div class="row"><select class="grow" onchange="board=this.value;draw()"><option value="">All boards</option>${bs.map(x=>`<option ${x==board?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+<div class="grid"><div class="card"><div class="stat">${b.length}</div>Foil cards to print</div><div class="card"><div class="stat">${a.length}</div>Printed</div><div class="card"><div class="stat">${A.length}</div>Total saved</div></div>
+<div class="tabs" style="top:62px"><button class="${tab=='NO'?'on':''}" onclick="tab='NO';draw()">🧺 Before print (${b.length})</button><button class="${tab=='YES'?'on':''}" onclick="tab='YES';draw()">✅ After print (${a.length})</button></div>
+<div class="grid">${(tab=='NO'?b:a).map(f=>`<div class="fc" onclick="pv('${esc(f.no)}')"><b>${esc(f.no)}</b><br><span class="mu">${esc(f.c)} · ${f.r.length} papers</span><br><span class="tag">${cb(f.c)||''}</span></div>`).join('')||'<div class="card mu">Nothing here yet.</div>'}</div>`}
+function doc(no){const f=foils().find(x=>x.no==no);return pdfReport([stmtSec(D,no,f.r)],{orient:'p'})}
+function pv(no){const f=foils().find(x=>x.no==no),s=stmtSec(D,no,f.r),m=modal(`<h3>Mark statement · ${esc(no)}</h3><div class="kv">${s.meta.map(x=>'<b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span>').join('')}<b>Evaluator</b><span>${esc(evTxt(s.ev))}</span></div><div class="tw" style="max-height:200px;overflow:auto"><table><tr><th>Dummy No.</th><th>Total</th></tr>${s.rows.map(r=>'<tr><td>'+esc(r[1])+'</td><td><b>'+r[2]+'</b></td></tr>').join('')}</table></div>
+<div class="row end"><button class="g" onclick="this.closest('.mo').remove()">Close</button><button class="go" id="dl">⬇ PDF</button><button id="pr">🖨 Print</button>${f.p!='YES'?'<button class="ok" id="mp">Mark as printed</button>':''}</div>`);
+m.querySelector('#dl').onclick=()=>doc(no).save('MarkStatement_'+no+'.pdf');
+m.querySelector('#pr').onclick=()=>{const d=doc(no);d.autoPrint();const u=d.output('bloburl');if(!window.open(u))d.save('MarkStatement_'+no+'.pdf')};
+if(m.querySelector('#mp'))m.querySelector('#mp').onclick=async()=>{m.remove();const r=await api('printed',{foils:[no]});if(r.ok){toast('Moved to After print');await load()}else toast(r.msg)}}
+load();
+</script></body></html>
