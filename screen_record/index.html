@@ -101,6 +101,15 @@ textarea{width:100%;min-height:70px;background:var(--card);color:var(--tx);borde
 @media (max-width:900px){main{display:block}#menu{display:block}
 #side{position:fixed;top:0;right:0;bottom:0;width:min(400px,92vw);max-height:none;z-index:30;background:var(--bg);padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px;transform:translateX(105%);transition:transform .25s;box-shadow:-10px 0 30px rgba(0,0,0,.4)}
 body.menu #side{transform:none}}
+.qrbox{width:min(78vmin,520px);margin:12px auto;background:#fff;border-radius:12px;overflow:hidden}.qrbox svg{display:block;width:100%;height:auto}
+#qrm{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center}
+.mbox{background:var(--bg2);color:var(--tx);border:1px solid var(--line);border-radius:20px;padding:16px;width:calc(100% - 24px);max-width:640px;text-align:center;max-height:96vh;overflow:auto}
+.mbox h2{margin:4px 0 0;justify-content:center}.mbox .bar{justify-content:center}
+#qv{width:100%;max-height:58vh;border-radius:12px;background:#000;display:none;margin-top:10px}
+details summary{cursor:pointer;color:var(--mut);font-size:13px;margin:6px 0}
+#pQR .qrbox{width:min(88vw,440px)}
+.bigcode{font:800 44px ui-monospace,monospace;letter-spacing:.25em;text-align:center;padding:6px 0;color:var(--teal)}
+#pCode{width:150px;font:700 22px ui-monospace,monospace;letter-spacing:.2em;text-align:center;background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px}
 </style>
 </head>
 <body>
@@ -129,14 +138,19 @@ body.menu #side{transform:none}}
 <section id="camsec"><h2>Camera source</h2>
   <label class="row"><div><b>Source</b></div><select id="csrc"><option value="laptop">This device camera</option><option value="phone">Phone over Wi-Fi</option></select></label>
   <div id="pair" style="display:none">
-    <p class="hint">Phone and computer must share one Wi-Fi network (or the phone’s hotspot). Bluetooth can’t carry video in a browser.</p>
-    <div class="bar"><button class="pri" id="mkOffer">1. Create code</button><button id="cpOffer">Copy</button></div>
-    <textarea id="offerOut" readonly placeholder="Code for the phone"></textarea>
-    <p class="hint">2. On the phone open this page, tap “Use this device as a camera”, paste the code, then copy the reply and paste it here.</p>
-    <textarea id="ansIn" placeholder="Reply code from the phone"></textarea>
-    <div class="bar"><button class="pri" id="conn">3. Connect</button><span id="cst">Not connected</span></div>
+    <p class="hint">Phone and laptop must share one Wi-Fi network (or the phone’s hotspot). Bluetooth can’t carry video in a browser.</p>
+    <div class="bar"><button class="pri" id="mkCode">Get 5-digit code</button><span id="cst">Not connected</span></div>
+    <div id="codeBig" class="bigcode"></div>
+    <p class="hint">On the phone open this page, tap “Use this device as a camera”, type the code and press Connect. Needs internet on both devices and a hosted copy of this page.</p>
+    <details><summary>No internet or code not working? Use QR pairing</summary><div class="bar"><button id="mkQR">Show QR for phone</button></div></details>
     <video id="rv" autoplay muted playsinline></video>
     <label class="row"><div><b>Use phone microphone</b></div><input type="checkbox" id="pmic"></label>
+    <details><summary>Use text codes instead of QR</summary>
+      <div class="bar"><button id="mkOffer">1. Create code</button><button id="cpOffer">Copy</button></div>
+      <textarea id="offerOut" readonly placeholder="Code for the phone"></textarea>
+      <textarea id="ansIn" placeholder="Reply code from the phone"></textarea>
+      <div class="bar"><button id="conn">3. Connect</button></div>
+    </details>
   </div>
   <div class="bar"><button id="asPhone">Use this device as a camera</button></div>
   <div class="bar" id="corners"><span class="hint" style="margin:0">Position</span><button data-p=".12,.2">↖</button><button data-p=".88,.2">↗</button><button data-p=".12,.8">↙</button><button data-p=".88,.8">↘</button></div>
@@ -176,14 +190,25 @@ body.menu #side{transform:none}}
 
 <div id="phone"><div class="pbox">
   <h2>Use this device as a camera</h2>
-  <p class="hint">1. On the computer press “Create code” and send it here (WhatsApp, email, notes). 2. Paste it below. 3. Copy the reply and paste it on the computer.</p>
-  <textarea id="pOff" placeholder="Paste the computer’s code"></textarea>
-  <div class="bar"><button class="pri" id="pGo">Start camera and create reply</button></div>
+  <p class="hint">On the laptop choose “Phone over Wi-Fi”, press “Get 5-digit code”, then type that code here.</p>
+  <div class="bar"><input type="text" id="pCode" inputmode="numeric" maxlength="5" placeholder="12345" aria-label="5-digit code"><button class="pri" id="pConn">Connect</button></div>
+  <div class="bar"><button id="pFlip">Flip camera</button><button id="pClose">Close</button></div>
+  <details><summary>No internet? Scan the laptop QR instead</summary><div class="bar"><button id="pScan">Scan laptop QR</button></div></details>
   <video id="pVid" autoplay muted playsinline></video>
-  <textarea id="pAns" readonly placeholder="Reply code appears here"></textarea>
-  <div class="bar"><button id="pCopy">Copy reply</button><button id="pFlip">Flip camera</button><button id="pClose">Close</button></div>
+  <div id="pQR" style="display:none"><p class="hint">Connected step: on the laptop press “Scan phone QR” and hold this QR in front of its webcam. Turn the screen brightness up.</p><div class="qrbox" id="pQRbox"></div></div>
   <p class="hint" id="pSt"></p>
+  <details><summary>Use text codes instead of QR</summary>
+    <textarea id="pOff" placeholder="Paste the laptop’s code"></textarea>
+    <div class="bar"><button id="pGo">Start camera and create reply</button></div>
+    <textarea id="pAns" readonly placeholder="Reply code appears here"></textarea>
+    <div class="bar"><button id="pCopy">Copy reply</button></div>
+  </details>
 </div></div>
+<div id="qrm"><div class="mbox"><h2 id="qt"></h2><div class="qrbox" id="qbox"></div><video id="qv" autoplay muted playsinline></video><p class="hint" id="qs"></p>
+  <div class="bar" id="qbtns"><button id="qshow">Show QR</button><button class="pri" id="qscan">Scan phone QR</button></div><div class="bar"><button id="qclose">Close</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),x=cv.getContext('2d');
@@ -256,7 +281,7 @@ async function start(){
     catch(e){status('Microphone blocked: recording without it')}
   }
   if(S.cam){
-    try{if($('#csrc').value==='phone'){if(!remote)throw 0;camV.srcObject=remote;S.remote=true}else{S.camS=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});camV.srcObject=S.camS}await camV.play()}
+    try{if($('#csrc').value==='phone'){if(!remote||!remote.getVideoTracks().length)throw 0;camV.srcObject=remote;S.remote=true}else{S.camS=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});camV.srcObject=S.camS}await camV.play()}
     catch(e){S.cam=false;status('Camera blocked: recording without it')}
   }
   const cx=Math.round(crop.x*src.w),cy=Math.round(crop.y*src.h),cw=Math.max(16,Math.round(crop.w*src.w)),ch=Math.max(16,Math.round(crop.h*src.h));
@@ -423,50 +448,99 @@ $('#corners').onclick=e=>{const p=e.target.dataset.p;if(p){const[a,b]=p.split(',
 const updPair=()=>$('#pair').style.display=$('#csrc').value==='phone'?'block':'none';
 $('#csrc').onchange=updPair;updPair();
 
-/* ---------- phone camera over Wi-Fi (WebRTC, manual pairing, no server) ---------- */
-let remote=null,rpc=null,ppc=null,pStream=null,fm='user';
+/* ---------- phone camera over Wi-Fi: QR pairing (WebRTC, no server) ---------- */
+let remote=null,rpc=null,ppc=null,pStream=null,fm='user',scanStop=null;
 const gum=c=>navigator.mediaDevices.getUserMedia(c);
-async function zip(t){const b=new Uint8Array(await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());let o='';b.forEach(c=>o+=String.fromCharCode(c));return 'NJ1:'+btoa(o)}
-async function unzip(t){const b=Uint8Array.from(atob(t.trim().replace(/^NJ1:/,'').replace(/\s/g,'')),c=>c.charCodeAt(0));return new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()}
+async function zip(t){const b=new Uint8Array(await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());let o='';b.forEach(c=>o+=String.fromCharCode(c));return 'NJ2:'+btoa(o)}
+async function unzip(t){const b=Uint8Array.from(atob(t.trim().replace(/^NJ2:/,'').replace(/\s/g,'')),c=>c.charCodeAt(0));return new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()}
+/* strip everything optional from the SDP so the code is small enough for a QR */
+function slim(sdp){return sdp.split(/\r?\n/).filter(l=>{
+  if(!l)return false;
+  if(/^a=(extmap|rtcp-fb|extmap-allow-mixed|msid-semantic|ice-options|rtcp-rsize|msid:)/.test(l))return false;
+  if(/^a=ssrc:\d+ (msid|mslabel|label):/.test(l))return false;
+  if(l.startsWith('a=candidate')){const t=l.split(' ');return t[2].toLowerCase()==='udp'&&t[4].indexOf(':')<0&&l.includes(' typ host')}
+  return true}).map(l=>l.startsWith('a=candidate')?l.replace(/ generation \d+.*$/,''):l).join('\r\n')+'\r\n'}
+function pref(tr,kind,mime){try{tr.setCodecPreferences(RTCRtpReceiver.getCapabilities(kind).codecs.filter(c=>c.mimeType.toLowerCase()===mime))}catch(e){}}
 const iceDone=pc=>new Promise(r=>{if(pc.iceGatheringState==='complete')return r();const t=setTimeout(r,3500);pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}}});
 const copyTxt=async id=>{const e=$(id);try{await navigator.clipboard.writeText(e.value)}catch(_){e.select();document.execCommand('copy')}status('Copied')};
+function qrSvg(t){const q=qrcode(0,'L');q.addData(t,'Byte');q.make();const n=q.getModuleCount(),m=4;let p='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))p+=`M${c+m},${r+m}h1v1h-1z`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n+2*m} ${n+2*m}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${p}"/></svg>`}
 
-$('#mkOffer').onclick=async()=>{
+/* QR modal + scanner (BarcodeDetector when available, jsQR otherwise) */
+function openModal(title,btns=true){$('#qt').textContent=title;$('#qbtns').style.display=btns?'flex':'none';$('#qrm').style.display='flex'}
+function stopScan(){if(scanStop)scanStop();scanStop=null}
+function closeModal(){stopScan();$('#qrm').style.display='none'}
+async function startScan(facing,cb,msg){
+  stopScan();const v=$('#qv');$('#qbox').style.display='none';$('#qs').textContent=msg;
+  let ms;try{ms=await gum({video:{facingMode:facing,width:{ideal:1280}}})}catch(e){$('#qs').textContent='Camera permission was blocked.';return}
+  v.srcObject=ms;v.style.display='block';await v.play();
+  const cvs=document.createElement('canvas'),c=cvs.getContext('2d',{willReadFrequently:true});
+  const bd=window.BarcodeDetector?new BarcodeDetector({formats:['qr_code']}):null;let on=true;
+  const loop=async()=>{if(!on)return;
+    if(v.videoWidth){let txt='';
+      try{if(bd){const r=await bd.detect(v);txt=r.length?r[0].rawValue:''}}catch(e){}
+      if(!txt&&window.jsQR){cvs.width=v.videoWidth;cvs.height=v.videoHeight;c.drawImage(v,0,0);const d=c.getImageData(0,0,cvs.width,cvs.height);const r=jsQR(d.data,d.width,d.height);txt=r?r.data:''}
+      if(/^NJ2:/.test(txt)){stopScan();cb(txt);return}}
+    setTimeout(loop,120)};
+  loop();
+  scanStop=()=>{on=false;ms.getTracks().forEach(t=>t.stop());v.srcObject=null;v.style.display='none'};
+}
+$('#qclose').onclick=closeModal;
+
+/* laptop side */
+async function makeOffer(){
   try{(await gum({audio:true})).getTracks().forEach(t=>t.stop())}catch(e){}   // lets the browser expose the real Wi-Fi address
-  if(rpc)rpc.close();
+  if(rpc)rpc.close();remote=new MediaStream();
   rpc=new RTCPeerConnection({iceServers:[]});
-  rpc.addTransceiver('video',{direction:'recvonly'});rpc.addTransceiver('audio',{direction:'recvonly'});
-  rpc.ontrack=e=>{remote=e.streams[0];const v=$('#rv');v.srcObject=remote;v.style.display='block'};
-  rpc.onconnectionstatechange=()=>{const st=rpc.connectionState;$('#cst').textContent=st==='connected'?'Connected ✓':st==='failed'||st==='disconnected'?'Disconnected':'Connecting…';
+  const v=rpc.addTransceiver('video',{direction:'recvonly'}),a=rpc.addTransceiver('audio',{direction:'recvonly'});
+  pref(v,'video','video/vp8');pref(a,'audio','audio/opus');
+  rpc.ontrack=e=>{remote.addTrack(e.track);const rv=$('#rv');rv.srcObject=remote;rv.style.display='block'};
+  rpc.onconnectionstatechange=()=>{const st=rpc.connectionState;
+    $('#cst').textContent=st==='connected'?'Connected ✓':st==='failed'||st==='disconnected'?'Disconnected':'Connecting…';
     if(st==='failed'||st==='closed'){remote=null;$('#rv').style.display='none'}};
   await rpc.setLocalDescription(await rpc.createOffer());await iceDone(rpc);
-  $('#offerOut').value=await zip(JSON.stringify(rpc.localDescription));status('Send this code to the phone');
+  return zip(slim(rpc.localDescription.sdp));
+}
+async function acceptAnswer(code){
+  if(!rpc){status('Create the QR first');return false}
+  try{await rpc.setRemoteDescription({type:'answer',sdp:await unzip(code)});$('#cst').textContent='Connecting…';return true}
+  catch(e){$('#cst').textContent='Invalid phone code';return false}
+}
+$('#mkQR').onclick=async()=>{
+  openModal('Scan this QR with the phone');$('#qs').textContent='Preparing…';$('#qbox').innerHTML='';
+  const code=await makeOffer();
+  const show=()=>{stopScan();$('#qbox').style.display='block';
+    try{$('#qbox').innerHTML=qrSvg(code);$('#qs').textContent='On the phone open this page, tap “Use this device as a camera”, then “Scan laptop QR”.'}
+    catch(e){$('#qbox').innerHTML='';$('#qs').textContent='QR too large here. Use the text code option instead.'}};
+  show();$('#qshow').onclick=show;
+  $('#qscan').onclick=()=>startScan('user',async c=>{if(await acceptAnswer(c))closeModal()},'Hold the phone’s QR in front of the laptop webcam. Turn the phone brightness up.');
 };
+$('#mkOffer').onclick=async()=>{$('#offerOut').value=await makeOffer();status('Send this code to the phone')};
 $('#cpOffer').onclick=()=>copyTxt('#offerOut');
-$('#conn').onclick=async()=>{
-  if(!rpc){status('Create the code first');return}
-  try{await rpc.setRemoteDescription(JSON.parse(await unzip($('#ansIn').value)));$('#cst').textContent='Connecting…'}
-  catch(e){$('#cst').textContent='Invalid reply code'}
-};
+$('#conn').onclick=()=>acceptAnswer($('#ansIn').value);
 
 /* phone side */
 $('#asPhone').onclick=()=>{$('#phone').style.display='block'};
 $('#pClose').onclick=()=>{$('#phone').style.display='none'};
 $('#pCopy').onclick=()=>copyTxt('#pAns');
-$('#pGo').onclick=async()=>{
+$('#pScan').onclick=()=>{openModal('Scan the laptop’s QR',false);startScan('environment',c=>{closeModal();phoneAnswer(c)},'Point the camera at the QR shown on the laptop.')};
+$('#pGo').onclick=()=>phoneAnswer($('#pOff').value);
+async function phoneAnswer(code){
   const st=$('#pSt');
   try{
-    const off=JSON.parse(await unzip($('#pOff').value));
-    pStream=await gum({video:{facingMode:fm,width:{ideal:1280}},audio:true});
-    $('#pVid').srcObject=pStream;
+    const sdp=await unzip(code);
+    pStream=await gum({video:{facingMode:fm,width:{ideal:1280}},audio:true});$('#pVid').srcObject=pStream;$('#pVid').style.display='block';
     if(ppc)ppc.close();ppc=new RTCPeerConnection({iceServers:[]});
     pStream.getTracks().forEach(t=>ppc.addTrack(t,pStream));
     ppc.onconnectionstatechange=()=>st.textContent=ppc.connectionState==='connected'?'Connected ✓ keep this page open':'Status: '+ppc.connectionState;
-    await ppc.setRemoteDescription(off);await ppc.setLocalDescription(await ppc.createAnswer());await iceDone(ppc);
-    $('#pAns').value=await zip(JSON.stringify(ppc.localDescription));st.textContent='Copy the reply and paste it on the computer.';
+    await ppc.setRemoteDescription({type:'offer',sdp});await ppc.setLocalDescription(await ppc.createAnswer());await iceDone(ppc);
+    const ans=await zip(slim(ppc.localDescription.sdp));$('#pAns').value=ans;
+    try{$('#pQRbox').innerHTML=qrSvg(ans);$('#pQR').style.display='block';st.textContent='Now let the laptop scan this QR.'}
+    catch(e){st.textContent='QR too large: use the text code below.'}
     try{await navigator.wakeLock.request('screen')}catch(e){}
   }catch(e){st.textContent='Could not start: '+(e.message||'invalid code')}
-};
+}
 $('#pFlip').onclick=async()=>{
   if(!ppc||!pStream)return;fm=fm==='user'?'environment':'user';
   try{const n=await gum({video:{facingMode:fm}});const t=n.getVideoTracks()[0];
@@ -475,6 +549,41 @@ $('#pFlip').onclick=async()=>{
   catch(e){$('#pSt').textContent='Could not switch camera'}
 };
 if(location.hash==='#phone')$('#phone').style.display='block';
+
+/* ---------- quick 5-digit code pairing (PeerJS cloud only exchanges the connection details; video goes device to device) ---------- */
+let peer=null,pp=null;
+$('#mkCode').onclick=()=>{
+  const cs=$('#cst');
+  if(typeof Peer==='undefined'){cs.textContent='Quick code needs internet. Use QR pairing.';return}
+  if(peer)peer.destroy();remote=null;$('#rv').style.display='none';
+  const code=String(Math.floor(10000+Math.random()*90000));
+  $('#codeBig').textContent=code;cs.textContent='Waiting for the phone…';
+  peer=new Peer('nanjoni-'+code);let opened=false;
+  const fail=setTimeout(()=>{if(!opened)cs.textContent='Pairing service unreachable (blocked here?). Use QR pairing.'},7000);
+  peer.on('open',()=>{opened=true;clearTimeout(fail)});
+  peer.on('error',e=>{if(e.type==='unavailable-id'){$('#mkCode').click()}else{clearTimeout(fail);cs.textContent='Pairing error: '+e.type}});
+  peer.on('call',c=>{
+    c.answer();
+    c.on('stream',st=>{remote=st;const v=$('#rv');v.srcObject=st;v.style.display='block';cs.textContent='Connected ✓';$('#codeBig').textContent=''});
+    c.on('close',()=>{remote=null;$('#rv').style.display='none';cs.textContent='Phone disconnected'});
+  });
+};
+$('#pConn').onclick=async()=>{
+  const st=$('#pSt'),code=$('#pCode').value.trim();
+  if(!/^\d{5}$/.test(code)){st.textContent='Type the 5 digits shown on the laptop.';return}
+  if(typeof Peer==='undefined'){st.textContent='Needs internet. Use the QR option below.';return}
+  try{
+    pStream=await gum({video:{facingMode:fm,width:{ideal:1280}},audio:true});
+    $('#pVid').srcObject=pStream;$('#pVid').style.display='block';
+    if(pp)pp.destroy();pp=new Peer();st.textContent='Connecting…';
+    pp.on('error',e=>st.textContent=e.type==='peer-unavailable'?'Wrong code, or the laptop is not waiting.':'Error: '+e.type);
+    pp.on('open',()=>{
+      const c=pp.call('nanjoni-'+code,pStream);ppc=c.peerConnection;
+      ppc.addEventListener('connectionstatechange',()=>st.textContent=ppc.connectionState==='connected'?'Connected ✓ keep this page open':'Status: '+ppc.connectionState);
+    });
+    try{await navigator.wakeLock.request('screen')}catch(e){}
+  }catch(e){st.textContent='Could not start the camera: '+(e.message||e.name)}
+};
 </script>
 </body>
 </html>
